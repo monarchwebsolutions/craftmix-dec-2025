@@ -1,0 +1,419 @@
+<link rel="stylesheet" href="{{ 'splide.css' | asset_url }}">
+<script src="{{ 'splide.js' | asset_url }}" defer></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      const videoSlider = new Splide('#videoCarousel', {
+        type: 'loop',
+        perPage: 1,
+        pagination: true,
+        arrows: true,
+        lazyLoad: 'sequential',
+      });
+
+      const contentSlider = new Splide('#testimonialCarousel', {
+        type: 'loop',
+        perPage: 1,
+        pagination: false,
+        arrows: false,
+        drag: false, // Prevent independent dragging
+        lazyLoad: 'sequential',
+      });
+
+      const mobileSlider = new Splide('#testimonialCarouselMobile', {
+        type: 'loop',
+        perPage: 1,
+        pagination: false,
+        arrows: false,
+        drag: false, // Prevent independent dragging
+      });
+
+      // Synchronize the second slider with the video slider
+      videoSlider.sync(contentSlider);
+      videoSlider.sync(mobileSlider);
+
+      // // Function to toggle play/pause on video click
+      const togglePlayPause = (event) => {
+        const video = event.currentTarget.tagName === 'VIDEO'
+          ? event.currentTarget
+          : event.currentTarget.closest('.video-container')?.querySelector('video');
+      
+        const playBtn = video?.closest('.video-container')?.querySelector('.happy-hour_play-btn');
+      
+        if (!video || !playBtn) return;
+      
+        if (video.paused) {
+          video.muted = false; // ✅ Ensure it's unmuted before playing
+          video.play();
+          playBtn.style.display = 'none';
+        } else {
+          video.pause();
+          playBtn.style.display = 'block';
+        }
+      };
+      // Function to toggle mute/unmute on button click
+      const toggleMute = (event) => {
+        const button = event.currentTarget;
+        const video = button.closest('.video-container').querySelector('video');
+        const icon = button.querySelector('img');
+
+        if (video.muted) {
+          video.muted = false;
+          icon.src = "https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205";
+          icon.alt = "Unmute Icon";
+        } else {
+          video.muted = true;
+          icon.src = "https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205";
+          icon.alt = "Mute Icon";
+        }
+      };
+
+      // Function to dynamically adjust the width of pagination bars
+      const adjustPaginationWidths = () => {
+        const pagination = document.querySelector('.splide__pagination');
+        const pages = document.querySelectorAll('.splide__pagination__page');
+        const videoContainer = document.querySelector('#videoCarousel .splide__track');
+
+        if (pagination && pages.length > 0 && videoContainer) {
+          const containerWidth = videoContainer.clientWidth;
+          const padding = 10; // Adjust this value for desired padding
+          const totalPadding = padding * (pages.length + 1); // Padding on both sides
+          const dynamicWidth = (containerWidth - totalPadding - 40) / pages.length;
+
+          pages.forEach((page) => {
+            page.style.width = `${dynamicWidth}px`;
+            page.style.marginLeft = `${padding / 2}px`;
+            page.style.marginRight = `${padding / 2}px`;
+          });
+        }
+      };
+
+      // Add functionality to decrease translateX by 1px on click
+      const addTransformCorrection = () => {
+        const track = document.querySelector('ul#videoCarousel-list'); // Ensure this selector matches your element
+        if (!track) return;
+
+        track.addEventListener('click', () => {
+          const currentTransform = window.getComputedStyle(track).transform;
+
+          if (currentTransform && currentTransform.includes('matrix')) {
+            const matrix = currentTransform.match(/matrix\(([^)]+)\)/);
+            if (matrix) {
+              const translateX = parseFloat(matrix[1].split(',')[4]); // Extract current translateX value
+              track.style.transform = `translateX(${translateX - 1}px)`; // Subtract 1px
+            }
+          }
+        });
+      };
+
+      videoSlider.on('mounted', () => {
+        // Add click event listener to all videos for play/pause
+        const videos = document.querySelectorAll('.carousel-video');
+        videos.forEach((video) => {
+          video.addEventListener('click', togglePlayPause);
+        });
+
+        // Add click event listeners to all play buttons
+        const playButtons = document.querySelectorAll('.happy-hour_play-btn');
+        playButtons.forEach((btn) => {
+          btn.addEventListener('click', togglePlayPause);
+        });
+
+        // Add click event listener to all mute buttons
+        const muteButtons = document.querySelectorAll('.mute-button');
+        muteButtons.forEach((button) => {
+          button.addEventListener('click', toggleMute);
+        });
+
+        // Adjust pagination widths after slider is mounted
+        adjustPaginationWidths();
+
+        // Enable transform correction on the track
+        addTransformCorrection();
+
+        // Unmute the first video if it's playing (but don't auto-play)
+          const firstSlide = videoSlider.Components.Elements.slides[0];
+          const firstVideo = firstSlide?.querySelector('video');
+        
+          if (firstVideo && !firstVideo.paused) {
+            firstVideo.muted = false;
+          }
+      });
+
+      videoSlider.on('move', () => {
+        const slides = videoSlider.Components.Elements.slides;
+      
+        slides.forEach((slide, index) => {
+          const video = slide.querySelector('video');
+          const playBtn = slide.querySelector('.happy-hour_play-btn');
+      
+          const isActive = slide.classList.contains('is-active');
+      
+          if (video) {
+            if (index === videoSlider.index) {
+              video.play();
+              video.muted = false;
+              if (playBtn) playBtn.style.display = 'none';
+            } else {
+              video.pause();
+              video.currentTime = 0;
+      
+              // Defer showing the button until transition completes
+              if (playBtn) {
+                // Hide immediately
+                playBtn.style.display = 'none';
+      
+                // Then show it only after Splide transition ends
+                setTimeout(() => {
+                  // Make sure this is no longer the active slide
+                  if (!slide.classList.contains('is-active')) {
+                    playBtn.style.display = 'block';
+                  }
+                }, 400); // Adjust this to match Splide transition speed
+              }
+            }
+          }
+        });
+      });
+
+      // Recalculate pagination widths on window resize
+      window.addEventListener('resize', adjustPaginationWidths);
+
+      videoSlider.mount();
+      contentSlider.mount();
+      mobileSlider.mount();
+    } catch (error) {
+      console.error('Error initializing Splide:', error);
+    }
+  });
+
+  // Pause video when scrolled out of view
+  document.addEventListener('DOMContentLoaded', () => {
+    const videos = document.querySelectorAll('.easy-cocktail-video');
+  
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const video = entry.target;
+  
+        if (!entry.isIntersecting && !video.paused) {
+          video.pause();
+  
+          const playBtn = video.closest('.video-container')?.querySelector('.happy-hour_play-btn');
+          if (playBtn) {
+            playBtn.style.display = 'block';
+          }
+        }
+      });
+    }, { threshold: 0.1 });
+  
+    videos.forEach(video => observer.observe(video));
+  });
+
+</script>
+
+<style>
+.happy-hour_play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 68px;
+  height: 68px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.happy-hour_play-btn img {
+  width: 68px;
+  height: 68px;
+}
+</style>
+
+
+<div class="section-container easy-cocktails-container">
+  <img loading="lazy" class="pink-umbrella-bg bg-img lazy-img" width="200" height="240" alt="Pink Umbrella Illustration" data-src="{{ 'pink-umbrella.svg' | asset_url }}">
+  <div class="section-flex-wrapper easy-cocktails-flex-wrapper page-max-width">
+    <div class="easy-cocktails-inner-container easy-cocktails-left">
+      <img loading="lazy" class="video-review-badge lazy-img" width="100" height="100" alt="Bestseller Badge" data-src="https://cdn.shopify.com/s/files/1/2340/1623/files/best-seller-badge-new-min.png?v=1734332198">
+      <div id="ec-video-slider">
+        <img loading="lazy" class="orange-flower-bg bg-img lazy-img" width="200" height="213" alt="Orange Flower Illustation" data-src="{{ 'orangeflower.svg' | asset_url }}">
+        <img loading="lazy" class="passionfruit-bg bg-img lazy-img" width="206" height="200" alt="Passionfruit Illustration" data-src="{{ 'passionfruit.svg' | asset_url }}">
+        <div class="splide" id="videoCarousel" role="group" aria-roledescription="carousel" aria-label="Easy Cocktails Video Carousel">
+          <div class="splide__track">
+            <ul class="splide__list">
+              {% for block in section.blocks %}
+                {% if block.settings.video_url %}
+                  <li class="splide__slide">
+                    <div class="video-container">
+                      {% if block.settings.reviewer_photo or block.settings.reviewer_name %}
+                        <div class="reviewer-info">
+                          {% if block.settings.reviewer_photo %}
+                            <img class="reviewer-photo" height="50" width="50" data-splide-lazy="{{ block.settings.reviewer_photo | image_url }}" alt="Reviewer Photo">
+                          {% endif %}
+                          {% if block.settings.reviewer_name %}
+                            <span class="reviewer-name">{{ block.settings.reviewer_name | upcase }}</span>
+                          {% endif %}
+                        </div>
+                      {% endif %}
+                      {% if block.settings.product %}
+                        <div class="video-review-atc-container media-atc-container">
+                          <div class="video-review-product-info media-atc-product-info">
+                            <div class="video-review-product-title media-atc-product-title">{{ block.settings.product.title }}</div>
+                            <div class="video-review-product-details media-atc-product-details">12 pack - <span class="igPrice" data-product-id="{{ block.settings.product.id }}">$14.99</span></div>
+                            <div
+                              class="stamped-product-reviews-badge"
+                              data-id="{{ block.settings.product.id }}"
+                              data-product-handle="{{ block.settings.product.handle }}"
+                              data-product-title="{{ block.settings.product.title }}"
+                              data-review-count="true"
+                            ></div>
+                          </div>
+                          <div class="media-atc-button-container">
+                            <form method="post" action="/cart/add" class="media-atc-form">
+                              <input id="cabinet-atc-value" data-featured-product="{{ block.settings.product.handle }}" type="hidden" name="id" value="{{ block.settings.product.variants.first.id }}">
+                              <button type="submit" class="secondary-cta">Add</button>
+                            </form>
+                          </div>
+                        </div>
+                      {% endif %}
+                      <video 
+                        class="carousel-video easy-cocktail-video" 
+                        muted 
+                        preload="none"
+                        playsinline
+                        aria-label="Cocktail preparation video"
+                        {% if block.settings.video_thumbnail %}
+                          data-poster="{{ block.settings.video_thumbnail | image_url: width: 800 }}"
+                        {% endif %}
+                      >
+                        <source src="{{ block.settings.video_url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                      </video>
+
+                       <!-- Play/Pause Button -->
+                      <div class="happy-hour_play-btn" id="happy-hour_play-toggle">
+                        <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/carousel-card-play-btn.svg?v=1738191527" width="68" height="68" alt="Play" class="happy-hour-play-icon" id="happy-hour-play-icon" loading="lazy">
+                      </div>
+                      
+                      <button class="mute-button" aria-label="Toggle Mute">
+                        <img height="24" width="24" data-splide-lazy="https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205" alt="Mute Icon">
+                      </button>
+                    </div>
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="easy-cocktails-inner-container easy-cocktails-right">
+      <div class="its-happy-hour tiny-header">IT'S HAPPY HOUR</div>
+      <h2>Easy Cocktails<br>& Mocktails</h2>
+      <p id="easy-cocktails-blurb" class="subheading">With Craftmix, making bar-quality cocktails or mocktails is as easy as mix, sip, repeat.</p>
+      <div class="easy-cocktails-quote-container">
+        <div id="testimonialCarousel" class="splide">
+          <div class="splide__track">
+            <ul class="splide__list">
+              {% for block in section.blocks %}
+                <li class="splide__slide">
+                  <div class="content-block">
+                    <div class="easy-cocktails-testimonial-name">
+                      <img width="16" height="16" alt="Dark blue checkmark on light blue badge" data-splide-lazy="https://cdn.shopify.com/s/files/1/2340/1623/files/testimonial-check-min.png?v=1734412519">
+                      {{ block.settings.testimonial_name }}
+                    </div>
+                    <div class="easy-cocktails-review-text">{{ block.settings.review_text }}</div>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        <img loading="lazy" class="text-bubble lazy-img" width="448" height="140" alt="Empty white text bubble with 5 blue stars in top right corner" data-src="https://cdn.shopify.com/s/files/1/2340/1623/files/craftmix-empty-text-bubble-min.png?v=1734402476">
+      </div>
+    </div>
+  </div>
+  <div class="easy-cocktails-quote-container-mobile">
+      <div id="testimonialCarouselMobile" class="splide">
+        <div class="splide__track">
+          <ul class="splide__list">
+            {% for block in section.blocks %}
+              <li class="splide__slide">
+                <div class="content-block">
+                  <div class="easy-cocktails-testimonial-name">
+                    <img class="lazy-img" width="16" height="16" alt="Dark blue checkmark on light blue badge" data-src="https://cdn.shopify.com/s/files/1/2340/1623/files/testimonial-check-min.png?v=1734412519">
+                    {{ block.settings.testimonial_name }}
+                  </div>
+                  <div class="easy-cocktails-review-text">{{ block.settings.review_text }}</div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <img loading="lazy" class="text-bubble lazy-img" width="448" height="140" alt="Empty white text bubble with 5 blue stars in top right corner" data-src="https://cdn.shopify.com/s/files/1/2340/1623/files/craftmix-empty-text-bubble-mobile-min.png?v=1734423475">
+    </div>
+</div>
+
+{% schema %}
+{
+  "name": "Easy Cocktails",
+  "tag": "section",
+  "class": "section",
+  "settings": [],
+  "blocks": [
+    {
+      "type": "video_slide",
+      "name": "Video Slide",
+      "settings": [
+        {
+          "type": "url",
+          "id": "video_url",
+          "label": "Video URL"
+        },
+       {
+          "type": "image_picker",
+          "id": "video_thumbnail",
+          "label": "Video Thumbnail"
+        },
+        {
+          "type": "image_picker",
+          "id": "reviewer_photo",
+          "label": "Reviewer Photo"
+        },
+        {
+          "type": "text",
+          "id": "reviewer_name",
+          "label": "Reviewer Name"
+        },
+        {
+          "type": "text",
+          "id": "testimonial_name",
+          "label": "Testimonial Name"
+        },
+        {
+          "type": "text",
+          "id": "review_text",
+          "label": "Review Text"
+        },
+        {
+          "type": "product",
+          "id": "product",
+          "label": "Select Product"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 10,
+  "presets": [
+    {
+      "name": "Easy Cocktails",
+      "category": "Custom"
+    }
+  ]
+}
+{% endschema %}
+

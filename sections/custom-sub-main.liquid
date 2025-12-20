@@ -1,0 +1,1405 @@
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    function handleActiveClass(containerSelector, buttonSelector) {
+        const container = document.querySelector(containerSelector);
+        if (!container) return;
+
+        const buttons = container.querySelectorAll(buttonSelector);
+
+        buttons.forEach(btn => {
+            btn.addEventListener("click", function () {
+                // Remove active class from all buttons in this group
+                buttons.forEach(b => b.classList.remove("active"));
+
+                // Add active class to the clicked button
+                this.classList.add("active");
+            });
+        });
+    }
+
+    // Apply function to both groups
+    handleActiveClass(".select-quantity-btns", ".select-quantity-btn");
+    handleActiveClass(".select-delivery-btns", ".select-delivery-btn");
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const slider = document.querySelector('.change-flavor-body');
+  const flavorCards = document.querySelectorAll('.flavor-card');
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+  let isDragging = false;
+
+  // Store the first product title
+  let firstProductTitle = '';
+  if (flavorCards.length > 0) {
+    firstProductTitle = flavorCards[0].querySelector('.flavor-card-heading').textContent.replace(/^2025 - /, '');
+  }
+
+  // Display the first product title
+  const productTitleElement = document.querySelector('.subscription-product-title');
+  if (productTitleElement && firstProductTitle) {
+    productTitleElement.textContent = firstProductTitle;
+  }
+
+  // Slider functionality
+  if (slider) {
+    slider.addEventListener('mousedown', (e) => {
+      isDown = true;
+      slider.style.cursor = 'grabbing';
+      startX = e.pageX - slider.offsetLeft;
+      scrollLeft = slider.scrollLeft;
+    });
+
+    slider.addEventListener('mouseleave', () => {
+      isDown = false;
+      slider.style.cursor = 'grab';
+    });
+
+    slider.addEventListener('mouseup', () => {
+      isDown = false;
+      slider.style.cursor = 'grab';
+    });
+
+    slider.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - slider.offsetLeft;
+      const walk = (x - startX) * 2; // Scroll speed
+      slider.scrollLeft = scrollLeft - walk;
+      isDragging = true;
+    });
+  }
+
+  // Flavor selection functionality
+  flavorCards.forEach(card => {
+    card.addEventListener('click', function(e) {
+      if (!isDragging) {
+        // Remove active class from all li elements
+        document.querySelectorAll('.change-flavor-list li').forEach(li => li.classList.remove('active'));
+        // Add active class to the parent li of the clicked card
+        this.closest('li').classList.add('active');
+        
+        // Update product title
+        const newTitle = this.querySelector('.flavor-card-heading').textContent.replace(/^2025 - /, '');
+        if (productTitleElement) {
+          productTitleElement.textContent = newTitle;
+        }
+        
+        // Update product image
+        const newImageSrc = this.dataset.productImage;
+        const productImage = document.querySelector('.product-image img') || document.querySelector('.pdp-main-img-container img');
+        if (productImage && newImageSrc) {
+          productImage.src = newImageSrc;
+          productImage.alt = this.querySelector('img')?.alt || newTitle; // Update alt text for accessibility
+          productImage.removeAttribute('style');
+        }
+
+        // Update main image bg color
+        const imageContainer = document.querySelector(".product-image-container");
+        const newBgColor = this.dataset.productBg;
+        imageContainer.style.backgroundColor = newBgColor;
+
+        // Update card bg color
+        const allCards = document.querySelectorAll(".flavor-card-container .flavor-card");
+
+        // Update Flavor Range Percentage
+        const flavorPercentRaw = card.querySelector(".flavor-range-percent")?.innerHTML.trim();
+        const flavorPercent = flavorPercentRaw === "" ? 50 : parseInt(flavorPercentRaw, 10) || 50;
+        console.log('Flavor %:', flavorPercent);
+
+        // Add What's Included for Variety Packs
+        const whatsIncluded = document.getElementById("whats-included-container");
+        
+        if (newTitle.trim() == "Variety Pack") {
+          whatsIncluded.innerHTML = "<strong>Included:</strong><br>Strawberry Mule, Passionfruit Paloma, Blood Orange Mai Tai & Mango Margarita";
+        } else if (newTitle.trim() == "Lemonade Variety") {
+          whatsIncluded.innerHTML = "<strong>Included:</strong><br>Classic Lemonade, Blueberry Lemonade & Pink Lemonade";
+        } else if (newTitle.trim() == "Holiday Variety") {
+          whatsIncluded.innerHTML = "<strong>Included:</strong><br>Spiked Apple Cider, Cranberry Vanilla & Espresso Martini";
+        } else if (newTitle.trim() == "5PM Happy Hour Kit") {
+          whatsIncluded.innerHTML = "<strong>Included:</strong><br>Blood Orange Mai Tai, Strawberry Mule, Mango Margarita, Passionfruit Paloma & Mint Mojito";
+        } else {
+          whatsIncluded.innerText = "";
+        }
+
+          
+        const flavorRangeBar = document.querySelector(".flavor-range-fill");
+        if (flavorRangeBar) {
+          flavorRangeBar.style.width = `${flavorPercent}%`;
+        }
+        
+        const flavorIcon = document.querySelector(".flavor-range .flavor-icon");
+        if (flavorIcon) {
+          flavorIcon.style.left = `calc(${flavorPercent}% - 3rem)`;
+        }
+
+        // Update Flavor Type
+        const flavorTypeRaw = card.querySelector(".flavor-type")?.innerHTML.trim();
+        const flavorType = flavorTypeRaw === "" ? "Sour" : flavorTypeRaw;
+
+        const flavorTypeContainer = document.querySelector(".sour-label");
+        if (flavorTypeContainer) {
+          flavorTypeContainer.innerText = flavorType
+        }
+
+        allCards.forEach(card => {
+            card.style.backgroundColor = "white";
+        });
+
+        const selectedCard = document.querySelector(".flavor-card-container.active .flavor-card");
+        selectedCard.style.backgroundColor = newBgColor;
+
+        console.log('Selected product:', newTitle, 'Product ID:', this.dataset.productId);
+      }
+      isDragging = false;
+    });
+  });
+
+  // Reset isDragging on mouse up
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // Set initial active flavor image
+  const activeFlavor = document.querySelector('.change-flavor-list li.active .flavor-card');
+  if (activeFlavor) {
+    const productImage = activeFlavor.dataset.productImage;
+    const mainImage = document.querySelector('.pdp-main-img-container img');
+    if (mainImage && productImage) {
+      mainImage.src = productImage;
+    }
+  }
+
+  // Log the first product title for verification
+  console.log('First Product Title:', firstProductTitle);
+});
+
+
+  // Flavor bar
+document.addEventListener('DOMContentLoaded', function () {
+  const flavorBars = document.querySelectorAll('.flavor-bar');
+
+  flavorBars.forEach(flavorBar => {
+    let sweetnessPercentage = 50; // Default value if no data is found
+
+    // Check if the metafield exists and has a value
+    if (typeof meta !== 'undefined' && meta.product && meta.product.sweetness_percentage) {
+      sweetnessPercentage = parseInt(meta.product.sweetness_percentage, 10);
+    }
+
+    // Ensure the sweetness percentage is within 0-100 range
+    sweetnessPercentage = Math.max(0, Math.min(100, sweetnessPercentage));
+
+    setFlavorRange(flavorBar, sweetnessPercentage);
+  });
+});
+
+function setFlavorRange(flavorBar, percentage) {
+  const fillElement = flavorBar.querySelector('.flavor-range-fill');
+  const iconElement = flavorBar.querySelector('.flavor-icon');
+  
+  if (fillElement && iconElement) {
+    fillElement.style.width = `${percentage}%`;
+    iconElement.style.left = `calc(${percentage}% - 3rem)`;
+  }
+}  
+</script>
+<script>
+  const sellingPlans = {
+    "36 pack": {
+        "2 weeks": "4672454894",
+        "4 weeks": "4672487662",
+        "8 weeks": "4672520430"
+    },
+    "24 pack": {
+        "2 weeks": "4672553198",
+        "4 weeks": "4672585966",
+        "8 weeks": "4672618734"
+    },
+    "12 pack": {
+        "2 weeks": "4672651502",
+        "4 weeks": "4672684270",
+        "8 weeks": "4672717038"
+    }
+  }
+  const variantIds = {
+    "8737642086638": {
+        "12 pack": "46082310111470", 
+        "24 pack": "46082310078702",
+        "36 pack": "46082310045934"
+    },
+    "8737646149870": {
+        "12 pack": "46082316665070", 
+        "24 pack": "46082316632302",
+        "36 pack": "46082316599534"
+    },
+    "8737649033454": {
+        "12 pack": "46082332033262", 
+        "24 pack": "46082332000494",
+        "36 pack": "46082331967726"
+    },
+    "8737840791790": {
+        "12 pack": "46082640707822", 
+        "24 pack": "46082640740590",
+        "36 pack": "46082640773358"
+    },
+    "8737842364654": {
+        "12 pack": "46082646278382", 
+        "24 pack": "46082646311150",
+        "36 pack": "46082646343918"
+    },
+    "8737844527342": {
+        "12 pack": "46082648539374", 
+        "24 pack": "46082648572142",
+        "36 pack": "46082648604910"
+    },
+    "8737845772526": {
+        "12 pack": "46082653520110", 
+        "24 pack": "46082653552878",
+        "36 pack": "46082653585646"
+    },
+    "8737854685422": {
+        "12 pack": "46082670199022", 
+        "24 pack": "46082670231790",
+        "36 pack": "46082670264558"
+    },
+    "8737857011950": {
+        "12 pack": "46082673049838", 
+        "24 pack": "46082673082606",
+        "36 pack": "46082673115374"
+    },
+    "8737858781422": {
+        "12 pack": "46082677244142", 
+        "24 pack": "46082677276910",
+        "36 pack": "46082677309678"
+    },
+    "8737863762158": {
+        "12 pack": "46082693431534", 
+        "24 pack": "46082693464302",
+        "36 pack": "46082693497070"
+    },
+    "8737868251374": {
+        "12 pack": "46082698313966", 
+        "24 pack": "46082698346734",
+        "36 pack": "46082698379502"
+    },
+    "8737870250222": {
+        "12 pack": "46082702770414", 
+        "24 pack": "46082702803182",
+        "36 pack": "46082702835950"
+    },
+    "8737872937198": {
+        "12 pack": "46082705653998", 
+        "24 pack": "46082705686766",
+        "36 pack": "46082705719534"
+    },
+    "8737874575598": {
+        "12 pack": "46082709160174", 
+        "24 pack": "46082709192942",
+        "36 pack": "46082709225710"
+    },
+    "8737877491950": {
+        "12 pack": "46082712076526", 
+        "24 pack": "46082712109294",
+        "36 pack": "46082712142062"
+    }
+  };
+
+  function getActiveProduct() {
+    const activeFlavorCard = document.querySelector(".flavor-card-container.active");
+    return activeFlavorCard ? activeFlavorCard.getAttribute("data-product-id") : "no product";
+  }
+  function getActiveQuantity() {
+    const activeQuantity = document.querySelector(".select-quantity-btn.active");
+    if (!activeQuantity) return "no quantity";
+  
+    let text = "";
+    activeQuantity.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        text += node.textContent;
+      }
+    });
+  
+    return text.trim() || "no quantity";
+  }
+
+  function getActiveFrequency() {
+    const activeFrequency = document.querySelector(".select-delivery-btn.active");
+    return activeFrequency ? activeFrequency.innerHTML.trim() : "no frequency";
+  }
+  function getVariantId(product_id, quantity){
+    console.log(product_id)
+    console.log(quantity)
+    console.log(variantIds[product_id][quantity]);
+    return variantIds[product_id][quantity];
+  }
+  function getSellingPlanId(quantity, frequency){
+    console.log(sellingPlans[quantity][frequency])
+    return sellingPlans[quantity][frequency]
+  }
+  function setAtcButton() {
+    // Get the values from the respective functions
+    console.log("Getting active product...");
+    const activeProduct = getActiveProduct();
+    console.log("Getting active quantity...");
+    const activeQuantity = getActiveQuantity();
+    console.log("Setting variant id...");
+    const variantId = getVariantId(activeProduct, activeQuantity);
+    console.log(variantId);
+    console.log("Setting selling plan...");
+    const sellingPlanId = getSellingPlanId(getActiveQuantity(), getActiveFrequency());
+    console.log(sellingPlanId)
+    console.log("Setting variant input...")
+    // Set the values in the corresponding input fields
+    const variantInput = document.getElementById("subscription-form-variant-id");
+    if (variantInput) variantInput.value = variantId;
+    console.log("Setting selling plan input...")
+    const sellingPlanInput = document.getElementById("subscription-form-selling-plan");
+    if (sellingPlanInput) sellingPlanInput.value = sellingPlanId;
+  }
+  function setPrice(){
+    const totalPriceContainer = document.querySelector('.price-box-comparison .price-1')
+    const finalPriceContainer = document.querySelector('.price-box-comparison .price-2')
+    const pricePerDrinkContainer = document.querySelector('.price-per-drink')
+    const atcButtonPrice = document.querySelector('.atc-button-price')
+    const activeQuantity = getActiveQuantity()
+    const activeProduct = getActiveProduct()
+    let totalPrice
+    let finalPrice
+    let pricePerDrink
+
+    switch (activeQuantity) {
+      case "12 pack":
+        totalPrice = activeProduct === 8737845772526 ? 16.99 : 14.99;
+        finalPrice = totalPrice * 0.9
+        pricePerDrink = finalPrice/12
+        break;
+      case "24 pack":
+        totalPrice = activeProduct === 8737845772526 ? 33.98 : 29.98;
+        finalPrice = totalPrice * 0.8
+        pricePerDrink = finalPrice/24
+        break;
+      // ... more cases as needed
+      case "36 pack":
+        totalPrice = activeProduct === 8737845772526 ? 50.97 : 44.97;
+        finalPrice = totalPrice * 0.7
+        pricePerDrink = finalPrice/36
+        break;
+      // ... more cases as needed
+    }
+    totalPriceContainer.innerHTML = `$${totalPrice.toFixed(2)}`;
+    finalPriceContainer.innerHTML = `$${finalPrice.toFixed(2)}`;
+    atcButtonPrice.innerHTML = `$${finalPrice.toFixed(2)}`;
+    pricePerDrinkContainer.innerHTML = `$${pricePerDrink.toFixed(2)}/drink`;
+  }
+  document.addEventListener("click", function (event) {
+  if (
+    event.target.closest(".flavor-card") ||
+    event.target.closest(".select-quantity-btn") ||
+    event.target.closest(".select-delivery-btn")
+  ) {
+    setTimeout(() => {
+      setAtcButton();
+      setPrice();
+    }, 100);
+  }
+});
+  
+  
+</script>
+<div class="subscriptions">
+  <img class="bg-img lemon-bg" width="200" height="auto" src="{{ 'lemon-bg.svg' | asset_url }}" alt="Lemon illustration">
+      <div class="container">
+        <div class="subscription-header">
+          <h2 class="subscription-heading">Always Save<br class="mobile-line-break"> Never Run Out</h2>
+
+          <div class="logo-container">
+            <div class="logo logo-1">
+              <img height="90" width="90" src="https://cdn.shopify.com/s/files/1/2340/1623/files/save-up-to-40-min.png?v=1741224367" alt="Save up to 40 % banner graphic">
+            </div>
+
+            <div class="logo logo-2">
+              <img height="90" width="90" src="https://cdn.shopify.com/s/files/1/2340/1623/files/easy-to-skip-min.png?v=1741224367" alt="Easy to skip banner graphic">
+            </div>
+
+            <div class="logo logo-3">
+              <img height="90" width="90" src="https://cdn.shopify.com/s/files/1/2340/1623/files/never-run-out-min.png?v=1741224367" alt="Never run out banner graphic">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="container main-section-container">
+        <div class="subscription-product">
+          <div class="product-image-container">
+            <img class="bg-img yellowflower-bg" width="200" height="auto" src="{{ 'yellowflower.svg' | asset_url }}" alt="Yellow flower illustration">
+            <img class="bg-img mint-bg" width="200" height="auto" src="{{ 'mint-leaf.svg' | asset_url }}" alt="Mint leaf illustration">
+            <div class="product-image">
+              <img id="mainProductImage" src="{{ collections['new-website-products'].products[0].images.last | img_url: 'original'}}" alt="{{ collections['new-website-products'].products[0].images.last.alt }}">
+            </div>
+
+            <div class="flavor-bar" id="flavorBar">
+              <div class="flavor-range">
+                <div class="flavor-range-fill"></div>
+                <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/lime2.svg?v=1738881712" alt="Lime illustration" class="flavor-icon">
+              </div>
+              <div class="flavor-labels">
+                <span class="sweet-label">Sweet</span>
+                <span class="flavor-label">Flavor</span>
+                <span class="sour-label">Sour</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="product-info-container">
+            <div class="subscription-product-info">
+              <h3 class="subscription-product-title">{{ product.title | replace_first: "2025 - ", "" }}</h3>
+              <div class="price-box">
+                <div class="price-box-comparison">
+                  <div class="price-1">$14.99</div>
+                  <div class="price-2">$13.49</div>
+                </div>
+                <div class="price-per-drink">
+                  $1.12/drink
+                </div>
+              </div>
+            </div>
+
+            <div id="whats-included-container">
+              <strong>Includes:</strong><br>Strawberry Mule, Passionfruit Paloma, Blood Orange Mai Tai & Mango Margarita
+            </div>
+            
+            <div class="change-flavor-container">
+              <h5 class="change-flavor-heading">Change Flavor</h5>
+              <div class="change-flavor-body">
+                <!-- <div class="change-flavor-overlay"></div> -->
+                <ul class="change-flavor-list">
+                  {% for product in collections['new-website-products'].products %}
+                    {% unless product.tags contains "price_test" %}
+                    <li class="flavor-card-container {% if forloop.first %}active{% endif %}" data-product-id="{{ product.id }}">
+                      <div class="flavor-card" data-product-id="{{ product.id }}" data-product-image="{{ product.images.last | img_url: '600x600' }}" data-product-bg="{{ product.metafields.custom.color_3 }}">
+                        <img class="flavor-card-image" src="{{ product.images.last | img_url: '300x300' }}" alt="{{ product.images.last.alt}}">
+                        {% assign title_length = product.title | size %}
+                        <h6 class="flavor-card-heading"
+                            style="max-width: {% if title_length < 15 %}70%{% else %}90%{% endif %};">
+                          {{ product.title }}
+                        </h6>
+                        <div class="hidden-product-details">
+                          <div class="flavor-range-percent">{{ product.metafields.custom.flavor_measure }}</div>
+                          <div class="flavor-type">{{ product.metafields.custom.flavor_type }}</div>
+                        </div>
+                      </div>
+                    </li>
+                    {% endunless %}
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+            
+            <div class="select-quantity">
+              <h5 class="select-quantity-heading">Select Quantity</h5>
+              <div class="select-quantity-btns">
+                <div class="select-quantity-btn active">12 pack</div>
+                <div class="select-quantity-btn">24 pack</div>
+                <div class="select-quantity-btn">36 pack<span class="most-popular-badge">Most Popular</span></div>
+              </div>
+              <div class="select-quantity-btns">
+                <div class="quantity-btn-discount">10% Off</div>
+                <div class="quantity-btn-discount">20% Off</div>
+                <div class="quantity-btn-discount">30% Off</div>
+              </div>
+            </div>
+            <div class="select-delivery">
+              <h5 class="select-delivery-heading">Deliver Every</h5>
+              <div class="select-delivery-btns">
+                <div class="select-delivery-btn active">2 weeks</div>
+                <div class="select-delivery-btn">4 weeks</div>
+                <div class="select-delivery-btn">8 weeks</div>
+              </div>
+            </div>
+            
+            <div class="benifit-checks">
+              <div class="benifit">
+                <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/tick-icon.png?v=1739131445" alt="Checkmark icon">
+                Earn FREE gifts on your 2nd, 3rd, and 6th orders.
+              </div>
+              <div class="benifit">
+                <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/tick-icon.png?v=1739131445" alt="Checkmark icon">
+                Get an always-on discount up to 30% OFF
+              </div>
+              <div class="benifit">
+                <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/tick-icon.png?v=1739131445" alt="Checkmark icon">
+                Try all our new flavors with FREE single-packet sendouts
+              </div>
+              <div class="benifit">
+                <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/tick-icon.png?v=1739131445" alt="Checkmark icon">
+                No commitments! Skip, change flavors, gift it, or cancel upcoming orders anytime
+              </div>
+            </div>
+            <div class="subscription-cta">
+              <form action="/cart/add" method="post" id="add-to-cart-form">
+                <!-- Hidden field for the variant ID -->
+                <input id="subscription-form-variant-id" type="hidden" name="id" value="46082712076526">
+              
+                <!-- Hidden field for quantity (change as needed) -->
+                <input type="hidden" name="quantity" value="1">
+              
+                <!-- Hidden field for selling plan -->
+                <input id="subscription-form-selling-plan" type="hidden" name="selling_plan" value="4672651502">
+              
+                <!-- Submit button -->
+                <button class="primary-cta" type="submit">Add to Cart - <span class="atc-button-price">$13.49</span></button>
+              </form>
+              <div class="subscription-atc-sub-text-container">
+                <div class="subscription-atc-sub-text">Always FREE Shipping When You Subscribe</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="section-wave-container" style="margin-bottom: -100px">
+        <lottie-player class="section-wave" src="{{ 'wave-animation-left-to-right-pale-blue.json' | asset_url }}" background="transparent"  speed="1"  loop autoplay></lottie-player>
+      </div>
+    </div>
+
+
+{% comment %}
+//possible form for live site
+<!-- <form id="product-selection-form" action="/cart/add" method="post">
+  <div class="change-flavor-container">
+    <h5 class="change-flavor-heading">Change Flavor</h5>
+    <div class="change-flavor-body">
+      <ul class="change-flavor-list">
+        {% for product in collections['new-website-products'].products %}
+         {% unless product.tags contains "price_test" %}
+          <li class="{% if forloop.first %}active{% endif %}">
+            <label class="flavor-card">
+              <input type="radio" name="id" value="{{ product.variants.first.id }}" {% if forloop.first %}checked{% endif %} class="visually-hidden">
+              <div class="flavor-card-content" data-product-id="{{ product.id }}" data-product-image="{{ product.images.last | img_url: '600x600' }}">
+                <img class="flavor-card-image" src="{{ product.images.last | img_url: '300x300' }}" alt="{{ product.title }}">
+                <h6 class="flavor-card-heading">{{ product.title }}</h6>
+              </div>
+            </label>
+          </li>
+          {% endunless %}
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  
+  <div class="select-quantity">
+    <h5 class="select-quantity-heading">Select Quantity</h5>
+    <div class="select-quantity-btns">
+      <label class="select-quantity-btn">
+        <input type="radio" name="quantity" value="12" class="visually-hidden">
+        <span>12 pack</span>
+      </label>
+      <label class="select-quantity-btn active">
+        <input type="radio" name="quantity" value="24" checked class="visually-hidden">
+        <span>24 pack</span>
+      </label>
+      <label class="select-quantity-btn">
+        <input type="radio" name="quantity" value="36" class="visually-hidden">
+        <span>36 pack</span>
+      </label>
+    </div>
+  </div>
+  
+  <div class="select-delivery">
+    <h5 class="select-delivery-heading">Deliver Every</h5>
+    <div class="select-delivery-btns">
+      <label class="select-delivery-btn active">
+        <input type="radio" name="delivery_frequency" value="2" checked class="visually-hidden">
+        <span>2 weeks</span>
+      </label>
+      <label class="select-delivery-btn">
+        <input type="radio" name="delivery_frequency" value="4" class="visually-hidden">
+        <span>4 weeks</span>
+      </label>
+      <label class="select-delivery-btn">
+        <input type="radio" name="delivery_frequency" value="8" class="visually-hidden">
+        <span>8 weeks</span>
+      </label>
+    </div>
+  </div>
+
+  <button type="submit" class="add-to-cart-button">Add to Cart</button>
+</form> -->
+
+/* Add these styles to hide the radio buttons visually while keeping them accessible */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* Update these selectors to target the label instead of the div */
+.flavor-card,
+.select-quantity-btn,
+.select-delivery-btn {
+  cursor: pointer;
+}
+
+/* Add styles for the checked state */
+input:checked + .flavor-card-content,
+input:checked + span {
+  /* Add your active styles here */
+  /* For example: */
+  background-color: #f0f0f0;
+  border-color: #333;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('product-selection-form');
+  const flavorCards = form.querySelectorAll('.flavor-card input');
+  const quantityBtns = form.querySelectorAll('.select-quantity-btn input');
+  const deliveryBtns = form.querySelectorAll('.select-delivery-btn input');
+
+  function updateActiveClass(elements) {
+    elements.forEach(el => {
+      const label = el.closest('label');
+      if (el.checked) {
+        label.classList.add('active');
+      } else {
+        label.classList.remove('active');
+      }
+    });
+  }
+
+  flavorCards.forEach(card => {
+    card.addEventListener('change', function() {
+      updateActiveClass(flavorCards);
+      // Update product image and other details here
+    });
+  });
+
+  quantityBtns.forEach(btn => {
+    btn.addEventListener('change', function() {
+      updateActiveClass(quantityBtns);
+    });
+  });
+
+  deliveryBtns.forEach(btn => {
+    btn.addEventListener('change', function() {
+      updateActiveClass(deliveryBtns);
+    });
+  });
+
+  // Initialize active classes
+  updateActiveClass(flavorCards);
+  updateActiveClass(quantityBtns);
+  updateActiveClass(deliveryBtns);
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    // Handle form submission here (e.g., add to cart via AJAX)
+    console.log('Form submitted');
+  });
+});
+{% endcomment %}
+
+
+{% style %}
+:root {
+  --light-color: {{ product.metafields.custom.color_3 }};
+  --medium-color: {{ product.metafields.custom.color_2  }};
+  --dark-color: {{ product.metafields.custom.color_1 }};
+}
+
+  *,
+*::after,
+*::before {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+a {
+  text-decoration: none;
+}
+
+ul {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+}
+
+.subscriptions {
+  padding: 4rem 0;
+  background-color: #ddf7f7;
+}
+
+.container {
+  max-width: 1400px;
+  padding: 0 16px;
+  margin: 0 auto;
+}
+.lemon-bg{
+  width: 184px;
+  height: auto;
+  right: -2.5rem;
+  transform: scaleX(-1);
+}
+.mint-bg{
+  width:200px;
+  height:auto;
+  right: -5rem;
+  z-index: -1;
+  transform: rotate(33deg);
+  bottom: -5rem;
+}
+.yellowflower-bg{
+    width: 300px;
+    height: auto;
+    left: -11.5rem;
+    top: -7rem;
+    z-index: -1;
+}
+.subscription-header {
+  margin-bottom: 70px;
+}
+.change-flavor-overlay{
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+.subscription-heading {
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Hornbill';
+  font-size: 64px;
+  font-weight: 700;
+  font-style: Bold;
+  letter-spacing: -1.68px;
+  text-align: center;
+  line-height: 54px;
+  margin-bottom: 40px;
+  z-index: 1;
+  position: relative;
+}
+.logo-container .logo{
+  height:90px;
+}
+.logo-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 58px;
+}
+.hidden-product-details{
+  position:absolute;
+  visibility:hidden;
+}
+.subscription-product {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1;
+  position: relative;
+}
+.subscriptions .main-section-container{
+  margin-bottom:4rem;
+}
+.subscriptions lottie-player{
+  transform: scaleX(-1);
+}
+.product-image-container {
+  height: 684px;
+  width: 616px;
+  border-radius: 30px;
+  border: 1.5px solid rgba(0, 38, 87, 1);
+  opacity: 1;
+  background-color: {{ collections['new-website-products'].products[0].metafields.custom.color_3 }};
+  position:relative;
+}
+
+.product-image {
+  width: 538px;
+  height: 538px;
+  max-width: 100%;
+  margin: auto;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-width: 538px; 
+}
+
+.flavor-bar {
+  width: 451px;
+  height: 64px;
+  margin-left: 86px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.flavor-range {
+  width: 100%;
+  height: 12px;
+  background-color: #ccc;
+  border-radius: 6px;
+  overflow: visible;
+  position: relative;
+}
+
+.flavor-range-fill {
+  height: 100%;
+  background-color: #002657;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.flavor-icon {
+  position: absolute;
+  top: 50%;
+  right: -22px; /* Half the width of the icon */
+  transform: translateY(-50%) translateX(50%) rotate(90deg);
+  width: 44px;
+  height: 42px;
+  transition: right 0.3s ease;
+}
+
+.flavor-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+  font-family: 'Goldplay';
+  font-size: 14px;
+  color: rgba(0, 38, 87, 0.7);
+}
+
+.change-flavor-list li.active .flavor-card {
+  background-color: {{ collections['new-website-products'].products[0].metafields.custom.color_3 }};
+  
+}
+
+.sweet-label,
+.sour-label {
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 15px;
+  font-weight: 600;
+  font-style: SemiBold;
+  letter-spacing: -0.09px;
+  text-align: center;
+  line-height: 16px;
+}
+
+.flavor-label {
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 14px;
+  font-weight: 700;
+  font-style: Bold;
+  letter-spacing: 0.3px;
+  text-align: center;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.flavor-card-container{
+  border-radius:12px;
+}
+.flavor-card-container.active{
+    border: 1.5px solid var(--craftmix-dark-blue);
+}
+
+.product-info-container {
+  height: 684px;
+  width: 616px;
+  padding-top: 11px;
+  padding-left: 2px;
+}
+
+.subscription-product-info {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.subscription-product-title {
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Hornbill';
+  font-size: 64px;
+  font-weight: 700;
+  font-style: Bold;
+  letter-spacing: -1.68px;
+  text-align: left;
+  line-height: 54px;
+  margin-right: 24px;
+  margin-bottom: 12px;
+}
+#whats-included-container{
+  font-family: "Goldplay";
+  font-weight:500;
+  margin-bottom:32px;
+  font-size:16px;
+  width:65%;
+}
+#whats-included-container strong{
+  font-weight:600;
+}
+.price-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-box-comparison {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.price-box-comparison .price-1 {
+  opacity: 0.42;
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 22px;
+  font-weight: 600;
+  font-style: SemiBold;
+  letter-spacing: -0.11px;
+  text-align: left;
+  line-height: 22px;
+  text-decoration: line-through;
+}
+.price-box-comparison .price-2 {
+  opacity: 1;
+  color: var(--craftmix-orange);
+  font-family: 'Goldplay';
+  font-size: 24px;
+  font-weight: 600;
+  font-style: SemiBold;
+  letter-spacing: -0.13px;
+  text-align: left;
+  line-height: 20px;
+}
+.price-per-drink {
+  opacity: 0.42;
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 14px;
+  font-weight: 700;
+  font-style: Bold;
+  letter-spacing: -0.08px;
+  text-align: right;
+  line-height: 12px;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
+.change-flavor-heading,
+.select-quantity-heading,
+.select-delivery-heading {
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 14px;
+  font-weight: 700;
+  font-style: Bold;
+  letter-spacing: 0.3px;
+  text-align: left;
+  line-height: 18px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.change-flavor-body {
+  height: 176px;
+  margin-bottom: 23px;
+  overflow-x: auto;
+  overflow-y: hidden; /* Hide vertical scrollbar */
+  cursor: grab;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(0, 38, 87, 0.16) transparent; /* For Firefox */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  position: relative; /* for blur overlay */
+  mask-image: linear-gradient(
+    to right,
+    black calc(100% - 200px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    black calc(100% - 200px),
+    transparent 100%
+  );
+}
+
+change-flavor-body:active {
+  cursor: grabbing;
+}
+
+/* Styling for WebKit browsers (Chrome, Safari, etc.) */
+.change-flavor-body::-webkit-scrollbar {
+  height: 4px; /* Slightly increased height for better visibility */
+}
+
+.change-flavor-body::-webkit-scrollbar-track {
+  background: rgba(0, 38, 87, 0.05); /* Light background for the track */
+  border-radius: 2px;
+}
+
+.change-flavor-body::-webkit-scrollbar-thumb {
+  background-color: rgba(
+    0,
+    38,
+    87,
+    0.2
+  ); /* Slightly darker for better contrast */
+  border-radius: 3px;
+}
+.change-flavor-body::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 38, 87, 0.3); /* Darker on hover */
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.change-flavor-body {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: thin; /* Firefox */
+}
+
+.change-flavor-list {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 6px; /* Reduced padding to account for scrollbar height */
+  padding-right: 50px; /* Add padding to prevent content from being cut off */
+}
+
+.flavor-card {
+  width: 115px;
+  height: 156px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(0, 38, 87, 0.08);
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 1);
+  cursor: pointer;
+}
+
+.flavor-card-image {
+  margin-top: 6px;
+  margin-left: 2px;
+  margin-bottom: 12px;
+}
+
+.flavor-card img {
+  pointer-events: none; /* Prevents image dragging */
+  -webkit-user-drag: none; /* For Safari */
+  user-select: none; /* Standard syntax for preventing selection */
+  -webkit-user-select: none; /* For older WebKit browsers */
+  -moz-user-select: none; /* For Firefox */
+  -ms-user-select: none; /* For Internet Explorer/Edge */
+}
+
+.flavor-card-heading {
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 15px;
+  font-weight: 600;
+  font-style: SemiBold;
+  letter-spacing: -0.09px;
+  text-align: center;
+  line-height: 16px;
+  max-width: 90%;
+  margin: auto;
+}
+
+.select-quantity-btns,
+.select-delivery-btns {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.select-quantity-btn,
+.select-delivery-btn {
+  position:relative;
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 18px;
+  font-weight: 600;
+  font-style: SemiBold;
+  letter-spacing: -0.11px;
+  text-align: center;
+  line-height: 22px;
+  border-radius: 33px;
+  border: 1.5px solid rgba(0, 38, 87, 1);
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 1);
+  padding: 11px 41px;
+  width: 164px;
+  cursor: pointer;
+}
+.quantity-btn-discount{
+  text-align:center;
+  width:164px;
+  font-family: Goldplay;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: red;
+  font-weight: bold;
+}
+.most-popular-badge{
+  position: absolute;
+  font-size: 14px;
+  top: -1.25rem;
+  background: var(--craftmix-orange);
+  border: 1.5px solid var(--craftmix-dark-blue);
+  border-radius: 100rem;
+  color: white;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  left: 0;
+  text-align: center;
+  max-width: 7.5rem;
+}
+.select-quantity-btn.active,
+.select-quantity-btn:hover,
+.select-delivery-btn.active,
+.select-delivery-btn:hover {
+  background-color: #60d3f8;
+}
+
+/* .carousel height 156px + bar margin ( bottom 16px) + 4px bar */
+
+.benifit-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 26px;
+}
+
+.benifit {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 15px;
+  font-weight: 600;
+  font-style: SemiBold;
+  letter-spacing: -0.09px;
+  text-align: left;
+  line-height: 16px;
+}
+
+.benifit img {
+  width: 14px;
+  height: 10px;
+  margin-right: 14px;
+}
+
+.subscription-cta {
+  text-align: left;
+}
+.subscription-cta button{
+  width:510px;
+  max-width:100%;
+  background: var(--craftmix-light-blue);
+}
+
+.add-to-cart-btn {
+  display: inline-block;
+  padding: 21px 161px;
+  color: rgba(0, 38, 87, 1);
+  font-family: 'Goldplay';
+  font-size: 20px;
+  font-weight: 600;
+  font-style: SemiBold;
+  letter-spacing: -0.13px;
+  text-align: center;
+  line-height: 20px;
+  border-radius: 33px;
+  border: 1.5px solid rgba(0, 38, 87, 1);
+  box-shadow: 2px 6px 0px rgba(0, 38, 87, 1);
+  background-color: rgba(96, 211, 248, 1);
+  border-radius: 33px;
+}
+.subscription-atc-sub-text-container{
+  width: 510px;
+  max-width:100%;
+  text-align: center;
+  margin-top: 1rem;
+}
+.subscription-atc-sub-text{
+  font-size: 15px;
+  font-family: Goldplay;
+  font-weight: 600;
+}
+.most-popular-badge{
+  position: absolute;
+  font-size: 15px;
+  left: 0;
+}
+/******************/
+/* Media Queries */
+/******************/
+@media screen and (max-width: 1290px) {
+  .subscription-product {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .subscription-product-info {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .mint-bg{
+    bottom:-2rem;
+  }
+  .subscriptions .main-section-container{
+    margin-bottom:12rem;
+  }
+}
+@media screen and (max-width:1023px){
+  .yellowflower-bg{
+    width:15rem;
+  }
+}
+@media screen and (max-width: 650px) {
+  .product-image-container
+   {
+    height: 449px;
+    width: 388px;
+    max-width:100%;
+  }
+
+  .product-info-container {
+    width: 388px;
+    max-width:100%;
+  }
+
+  .logo-container {
+    gap: 40px;
+  }
+  .logo-container .logo img {
+    width: 76px;
+    height: 76px;
+  }
+
+  .subscription-header {
+    margin-bottom: 40px;
+  }
+
+  .subscription-heading {
+    font-size: 40px;
+    letter-spacing: -1.05px;
+    text-align: center;
+    line-height: 40px;
+    margin-bottom: 40px;
+    padding: 0 50px;
+  }
+  .product-image {
+    width: 328px;
+    height: 328px;
+    /* margin-left: 43px; */
+    margin-top: 28px;
+  }
+  .flavor-bar {
+    width: 354px;
+    max-width:90%;
+    margin-left: 17px;
+  }
+
+  .subscription-product-title {
+    font-size: 40px;
+    letter-spacing: -1.05px;
+    text-align: left;
+    line-height: 40px;
+  }
+
+  .price-box-comparison .price-1 {
+    font-size: 18px;
+    letter-spacing: -0.11px;
+    text-align: left;
+    line-height: 22px;
+  }
+  .price-box-comparison .price-2 {
+    font-size: 18px;
+    letter-spacing: -0.11px;
+    text-align: left;
+    line-height: 22px;
+  }
+  .price-per-drink {
+    opacity: 0.4;
+    font-size: 12px;
+    letter-spacing: -0.08px;
+    text-align: left;
+    line-height: 12px;
+  }
+
+  .select-quantity-btn,
+  .select-delivery-btn {
+    /* Changed on shopify style sheet */
+    padding: 11px 12px;
+    width: 125px;
+  }
+
+  .add-to-cart-btn {
+    display: inline-block;
+    padding: 19px 101px;
+  }
+
+  .change-flavor-body {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+  .yellowflower-bg{
+    width:10rem;
+    left:-6.5rem;
+    top:-4rem;
+  }
+  .lemon-bg{
+    width:8rem;
+    right:-3.5rem;
+  }
+  .most-popular-badge{
+    font-size:12px;
+    max-width: 80%;
+  }
+  #whats-included-container{
+    width:90%;
+  }
+}
+
+
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Custom Subscribe Header",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Always Save Never Run Out"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Custom Subscribe Header",
+    }
+  ]
+}
+{% endschema %}
