@@ -841,87 +841,66 @@ document.addEventListener('keydown', (e) => {
 </script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  // Find the actual drawer (avoid #mobile-navigation because you have duplicate IDs)
-  const drawer = Array.from(document.querySelectorAll(".menu-drawer"))
-    .find(el => el.classList.contains("fixed") && el.querySelector(".accordion"));
-
+  const drawer = document.querySelector(".menu-drawer");
   if (!drawer) return;
 
   const accordion = drawer.querySelector(".accordion");
   if (!accordion) return;
 
-  const FOCUSABLE = [
-    "a[href]",
-    "button:not([disabled])",
-    "input:not([disabled])",
-    "select:not([disabled])",
-    "textarea:not([disabled])",
-    "[tabindex]"
-  ].join(",");
-
-  function setFocusable(el, enabled) {
-    // Prefer inert (modern browsers). This disables focus + clicks.
-    // Keep aria-hidden in sync for SR.
-    if (!enabled) {
-      el.setAttribute("aria-hidden", "true");
-      el.setAttribute("inert", "");
-    } else {
-      el.setAttribute("aria-hidden", "false");
-      el.removeAttribute("inert");
-    }
-
-    // Fallback: force tabindex -1 on descendants (covers browsers without inert)
-    el.querySelectorAll(FOCUSABLE).forEach(node => {
-      // Don’t mess with the accordion button itself if it lives inside (yours doesn’t, but safe)
-      if (node.closest(".accordion-item > button")) return;
-
+  function setAnchorsFocusable(panel, enabled) {
+    const anchors = panel.querySelectorAll("a");
+    anchors.forEach(a => {
       if (!enabled) {
-        if (!node.hasAttribute("data-orig-tabindex")) {
-          const t = node.getAttribute("tabindex");
-          node.setAttribute("data-orig-tabindex", t === null ? "__none__" : t);
+        // store original tabindex once
+        if (!a.hasAttribute("data-orig-tabindex")) {
+          const t = a.getAttribute("tabindex");
+          a.setAttribute("data-orig-tabindex", t === null ? "__none__" : t);
         }
-        node.setAttribute("tabindex", "-1");
+        a.setAttribute("tabindex", "-1");
       } else {
-        const orig = node.getAttribute("data-orig-tabindex");
-        if (!orig) return;
-        if (orig === "__none__") node.removeAttribute("tabindex");
-        else node.setAttribute("tabindex", orig);
-        node.removeAttribute("data-orig-tabindex");
+        const orig = a.getAttribute("data-orig-tabindex");
+        if (!orig) {
+          // if we never touched it, ensure it's not stuck at -1
+          if (a.getAttribute("tabindex") === "-1") a.removeAttribute("tabindex");
+          return;
+        }
+        if (orig === "__none__") a.removeAttribute("tabindex");
+        else a.setAttribute("tabindex", orig);
+        a.removeAttribute("data-orig-tabindex");
       }
     });
   }
 
-  function syncAll() {
-    accordion.querySelectorAll(".accordion-item").forEach(item => {
-      const btn = item.querySelector("button[aria-expanded]");
-      const panel = item.querySelector(".accordion-content");
-      if (!btn || !panel) return;
+  function syncAccordionFocus() {
+    const buttons = accordion.querySelectorAll(".accordion-item > button[aria-expanded]");
+    buttons.forEach(btn => {
+      // IMPORTANT: panel is a sibling directly following the button
+      const panel = btn.nextElementSibling;
+      if (!panel || !panel.classList.contains("accordion-content")) return;
 
-      const open = btn.getAttribute("aria-expanded") === "true";
-      setFocusable(panel, open);
+      const isOpen = btn.getAttribute("aria-expanded") === "true";
+      setAnchorsFocusable(panel, isOpen);
     });
   }
 
-  // Initial state
-  syncAll();
+  // Initial pass
+  syncAccordionFocus();
 
-  // Re-sync after any click inside the accordion.
-  // Use capture + a tiny delay to ensure the theme has already updated aria-expanded.
+  // If your theme updates aria-expanded on click/keydown, resync after it runs.
   accordion.addEventListener("click", () => {
-    requestAnimationFrame(() => syncAll());
+    requestAnimationFrame(syncAccordionFocus);
   }, true);
 
-  // Also handle keyboard toggles (Enter/Space)
   accordion.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    requestAnimationFrame(() => syncAll());
+    if (e.key === "Enter" || e.key === " ") {
+      requestAnimationFrame(syncAccordionFocus);
+    }
   }, true);
 
-  // Safety net: if the theme toggles aria-expanded outside of click handlers
-  // (rare, but happens), observe changes.
-  const obs = new MutationObserver(syncAll);
+  // If aria-expanded flips via JS without user interaction, observe it.
+  const mo = new MutationObserver(syncAccordionFocus);
   accordion.querySelectorAll(".accordion-item > button[aria-expanded]").forEach(btn => {
-    obs.observe(btn, { attributes: true, attributeFilter: ["aria-expanded"] });
+    mo.observe(btn, { attributes: true, attributeFilter: ["aria-expanded"] });
   });
 });
 </script>
