@@ -131,72 +131,47 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <script>
-(function () {
-  function isEsc(e) {
-    return e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27;
-  }
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' && e.keyCode !== 27) return;
 
-  function closeAbout() {
-    // Close any open dropdown menus (handles duplicate toggle-menu nodes)
-    document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu').forEach(menu => {
-      menu.classList.add('toggle-menu-hidden');
-    });
-
-    // Reset trigger styling + chevrons
-    document.querySelectorAll('li.tree-menu.has-dropdown').forEach(li => {
-      const relativeDiv = li.querySelector('div.relative');
-      if (relativeDiv) {
-        relativeDiv.style.background = '';
-        relativeDiv.style.border = '2px solid transparent';
-        relativeDiv.style.borderRadius = '';
-      }
-
-      const trigger = li.querySelector('a.tree-menu-item');
-      if (trigger) {
-        trigger.classList.remove('clicked');
-        const svg = trigger.querySelector('svg');
-        if (svg) svg.classList.remove('rotated');
-      }
-    });
-
-    // If Alpine store exists, also ask it to close (keeps state consistent)
-    try {
-      if (window.Alpine && typeof window.Alpine.store === 'function') {
-        const store = window.Alpine.store('xHeaderMenu');
-        if (store && typeof store.hideMenu === 'function') {
-          const nav = document.querySelector('nav[x-on\\:click\\.away]');
-          if (nav) store.hideMenu(nav);
-        }
-      }
-    } catch (err) {}
-
-    // Return focus to About trigger (best effort)
-    const aboutTrigger = Array.from(document.querySelectorAll('a.tree-menu-item'))
-      .find(a => a.textContent && a.textContent.trim() === 'About');
-    if (aboutTrigger) aboutTrigger.focus();
-  }
-
-  function anyDropdownOpen() {
-    // Treat as "open" if any dropdown is visible/clickable
-    return Array.from(document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu')).some(menu => {
+  // Find any visible/open dropdown menus
+  const openMenus = Array.from(document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu'))
+    .filter(menu => {
       const cs = getComputedStyle(menu);
-      return menu.offsetParent !== null && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
+      const isVisible = menu.offsetParent !== null && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
+      const isNotHiddenClass = !menu.classList.contains('toggle-menu-hidden');
+      return isVisible && isNotHiddenClass;
     });
-  }
 
-  function handler(e) {
-    if (!isEsc(e)) return;
-    if (!anyDropdownOpen()) return;
+  if (!openMenus.length) return;
 
-    e.preventDefault();
-    e.stopPropagation();
-    closeAbout();
-  }
+  e.preventDefault();
 
-  // Bind at window level, capture phase, both keydown and keyup
-  window.addEventListener('keydown', handler, true);
-  window.addEventListener('keyup', handler, true);
-})();
+  // Close only the open ones
+  openMenus.forEach(menu => {
+    menu.classList.add('toggle-menu-hidden');
+
+    const li = menu.closest('li.tree-menu.has-dropdown');
+    if (!li) return;
+
+    // Reset pill styling (match your existing click-away behavior)
+    const relativeDiv = li.querySelector('div.relative');
+    if (relativeDiv) {
+      relativeDiv.style.background = '';
+      relativeDiv.style.border = '2px solid transparent';
+      relativeDiv.style.borderRadius = '';
+    }
+
+    // Unrotate caret + remove clicked class
+    const trigger = li.querySelector('a.tree-menu-item');
+    if (trigger) {
+      trigger.classList.remove('clicked');
+      const svg = trigger.querySelector('svg');
+      if (svg) svg.classList.remove('rotated');
+      trigger.focus();
+    }
+  });
+}, true);
 </script>
 
 
