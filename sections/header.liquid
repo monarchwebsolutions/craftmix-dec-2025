@@ -433,11 +433,16 @@ document.addEventListener('keydown', (e) => {
            Hide for landing page                 
           {% endcomment %}                  
           {% unless template contains 'lander' or template contains 'landing' %}
-          <div 
-            id="mobile-navigation"
-            @click="$store.xMobileNav.open()" 
-            class="relative w-11 h-8 px-3 py-2.5 rounded-full cursor-pointer opacity-70{%- unless section.settings.mobile_header_layout == 'center-left' %} -right-3{% else %} -left-3{% endunless -%}"
-          > 
+          <div
+              id="mobile-navigation"
+              role="button"
+              tabindex="0"
+              aria-label="Open menu"
+              @click="$store.xMobileNav.open()"
+              @keydown.enter.prevent="$store.xMobileNav.open()"
+              @keydown.space.prevent="$store.xMobileNav.open()"
+              class="relative w-11 h-8 px-3 py-2.5 rounded-full cursor-pointer opacity-70{%- unless section.settings.mobile_header_layout == 'center-left' %} -right-3{% else %} -left-3{% endunless -%}"
+            >
             {% render 'icon-alls', icon: 'icon-hamburger' %}
           </div>
           {% endunless %}                  
