@@ -635,7 +635,7 @@ document.addEventListener('keydown', (e) => {
     }
   </script>
 {%- endif -%}
-<script>
+{% comment %} <script>
 // Trap focus in mobile menu
 (() => {
   const FOCUSABLE = [
@@ -838,9 +838,114 @@ document.addEventListener('keydown', (e) => {
     obs.observe(document.documentElement, { childList: true, subtree: true });
   }
 })();
-</script>
+</script> {% endcomment %}
 <script>
 // Only focus on expanded menu items in mobile menu
+document.addEventListener("DOMContentLoaded", () => {
+  const FOCUSABLE = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]"
+  ].join(",");
+
+  function getDrawer() {
+    // You have TWO elements with id="mobile-navigation".
+    // The drawer is the one with class "menu-drawer".
+    return document.querySelector("#mobile-navigation.menu-drawer");
+  }
+
+  function setPanelFocusable(panel, enabled) {
+    const nodes = panel.querySelectorAll(FOCUSABLE);
+
+    nodes.forEach((el) => {
+      // cache original tabindex once
+      if (!el.hasAttribute("data-orig-tabindex")) {
+        const orig = el.getAttribute("tabindex");
+        el.setAttribute("data-orig-tabindex", orig === null ? "" : orig);
+      }
+
+      if (enabled) {
+        const orig = el.getAttribute("data-orig-tabindex");
+        if (orig === "") el.removeAttribute("tabindex");
+        else el.setAttribute("tabindex", orig);
+      } else {
+        el.setAttribute("tabindex", "-1");
+      }
+    });
+  }
+
+  function syncAccordionItem(item) {
+    const btn = item.querySelector(":scope > button[aria-expanded]");
+    const panel = item.querySelector(":scope > .accordion-content");
+    if (!btn || !panel) return;
+
+    const expanded = btn.getAttribute("aria-expanded") === "true";
+    setPanelFocusable(panel, expanded);
+  }
+
+  function syncAll() {
+    const drawer = getDrawer();
+    if (!drawer) return;
+
+    drawer.querySelectorAll(".accordion-item").forEach(syncAccordionItem);
+  }
+
+  // 1) Sync immediately (in case drawer is already in DOM)
+  syncAll();
+
+  // 2) Sync whenever aria-expanded changes (covers click + keyboard)
+  const attrObserver = new MutationObserver((mutations) => {
+    let shouldSync = false;
+    for (const m of mutations) {
+      if (m.type === "attributes" && m.attributeName === "aria-expanded") {
+        shouldSync = true;
+        break;
+      }
+    }
+    if (shouldSync) syncAll();
+  });
+
+  // 3) Sync whenever the drawer DOM changes (covers re-render/injection)
+  const domObserver = new MutationObserver(() => syncAll());
+
+  function attachObservers() {
+    const drawer = getDrawer();
+    if (!drawer) return false;
+
+    // observe aria-expanded on current buttons
+    drawer.querySelectorAll(".accordion-item > button[aria-expanded]").forEach((btn) => {
+      attrObserver.observe(btn, { attributes: true });
+    });
+
+    // observe drawer subtree for injected/replaced content
+    domObserver.observe(drawer, { childList: true, subtree: true });
+
+    return true;
+  }
+
+  // attach now if possible
+  if (!attachObservers()) {
+    // drawer may be injected later; watch the document until it appears
+    const docObserver = new MutationObserver(() => {
+      if (attachObservers()) {
+        syncAll();
+        docObserver.disconnect();
+      }
+    });
+    docObserver.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  // 4) If your Alpine store toggles drawer open, resync right after open click
+  // (This is defensive, in case open triggers DOM replacement)
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest('button[@click], button#mobile-navigation');
+    if (!trigger) return;
+    setTimeout(syncAll, 0);
+  }, true);
+});
 
 </script>
 {% schema %}
