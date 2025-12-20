@@ -1077,5 +1077,5 @@ section.has-full-page-reviews {
 }
 
 .rebuy-cart__progress-bar-meter-fill::focus-visible{
-  outline:none
+  outline:none !important;
 }
