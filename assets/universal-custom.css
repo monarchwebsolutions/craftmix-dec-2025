@@ -6,7 +6,7 @@
   box-sizing: border-box;
 }
 *:focus-visible,
-.rebuy-cart .rebuy-cart__header button:focus-visible {
+#rebuy-cart-close {
   outline: 3px solid #e10600 !important; /* accessible red */
   outline-offset: 3px;
 }
