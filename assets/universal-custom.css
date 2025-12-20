@@ -5,7 +5,7 @@
   padding: 0;
   box-sizing: border-box;
 }
-*:focus-visible {
+*:focus-visible, .rebuy-cart a:focus-visible, .rebuy-cart button:focus-visible, .rebuy-cart select:focus-visible, .rebuy-cart input:focus-visible {
   outline: 3px solid #e10600 !important; /* accessible red */
   outline-offset: 3px;
 }
@@ -1068,3 +1068,6 @@ section.has-full-page-reviews {
     font-size: 16px;
   }
 }
+
+/* Rebuy Smart Cart */
+
