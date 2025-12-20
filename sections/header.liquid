@@ -635,7 +635,7 @@ document.addEventListener('keydown', (e) => {
     }
   </script>
 {%- endif -%}
-{% comment %} <script>
+<script>
 // Trap focus in mobile menu
 (() => {
   const FOCUSABLE = [
@@ -838,7 +838,7 @@ document.addEventListener('keydown', (e) => {
     obs.observe(document.documentElement, { childList: true, subtree: true });
   }
 })();
-</script> {% endcomment %}
+</script>
 <script>
 // Only focus on expanded menu items in mobile menu
 document.addEventListener("DOMContentLoaded", () => {
