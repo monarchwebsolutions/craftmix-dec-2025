@@ -93,7 +93,7 @@
   @click="$store.xMobileNav.close()"
 ></div>
 <template x-if="!runDispatch">
-  <div
+  <button
     id="mobile-navigation"
     :class="{ 'menu-opening': $store.xMobileNav.show, 'rtl right-0 translate-x-full{% if settings.edges_type == 'rounded_corners' %} rounded-l-[10px]{% endif %}': $store.xHeaderMenu.mobileHeaderLayout.includes('right'), 'ltr left-0 -translate-x-full{% if settings.edges_type == 'rounded_corners' %} rounded-r-[10px]{% endif %}': !$store.xHeaderMenu.mobileHeaderLayout.includes('right') }" 
     class="menu-drawer fixed z-[60] top-0 bottom-0 w-10/12 max-w-sm motion-reduce invisible overflow-x-hidden"
@@ -221,7 +221,7 @@
         </div>
       {%- endif -%}
     </div>
-  </div>
+  </button>
 </template>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
