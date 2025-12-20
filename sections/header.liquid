@@ -131,26 +131,55 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <script>
-// Close dropdown menus with ESC button
-<script>
 document.addEventListener('DOMContentLoaded', () => {
+  function closeAboutDropdowns() {
+    // 1) Hide ALL toggle menus (handles duplicate DOM nodes)
+    document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu').forEach(menu => {
+      if (!menu.classList.contains('toggle-menu-hidden')) {
+        menu.classList.add('toggle-menu-hidden');
+      }
+    });
+
+    // 2) Reset the pill styling on ALL dropdown triggers (matches your outside-click logic)
+    document.querySelectorAll('li.tree-menu > .relative').forEach(relativeDiv => {
+      relativeDiv.style.background = '';
+      relativeDiv.style.border = '2px solid transparent';
+      relativeDiv.style.borderRadius = '';
+    });
+
+    // 3) Unrotate ALL chevrons and remove "clicked" state
+    document.querySelectorAll('a.tree-menu-item').forEach(btn => {
+      btn.classList.remove('clicked');
+      const svg = btn.querySelector('svg');
+      if (svg) svg.classList.remove('rotated');
+    });
+  }
+
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
+    // Support both modern + older key detection
+    const isEsc = (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27);
+    if (!isEsc) return;
 
-    const openMenu = document.querySelector('li.tree-menu.has-dropdown .toggle-menu:not(.toggle-menu-hidden)');
-    if (!openMenu) return;
+    // Only act if any dropdown is actually visible (prevents side effects)
+    const anyVisibleDropdown = Array.from(
+      document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu')
+    ).some(menu => {
+      const cs = getComputedStyle(menu);
+      // treat as "open" if it can be seen/clicked
+      return menu.offsetParent !== null && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0';
+    });
 
-    const parentLi = openMenu.closest('li.tree-menu.has-dropdown');
-    const trigger = parentLi ? parentLi.querySelector('a.tree-menu-item') : null;
-    if (!trigger) return;
+    if (!anyVisibleDropdown) return;
 
     e.preventDefault();
-    trigger.click(); // lets your existing click logic + Alpine close it correctly
-    trigger.focus();
+    closeAboutDropdowns();
+
+    // Return focus to the About trigger if it's present
+    const aboutTrigger = Array.from(document.querySelectorAll('a.tree-menu-item'))
+      .find(a => a.textContent && a.textContent.trim() === 'About');
+    if (aboutTrigger) aboutTrigger.focus();
   }, true);
 });
-</script>
-
 </script>
 
 
