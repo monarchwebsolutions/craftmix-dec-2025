@@ -841,13 +841,12 @@ document.addEventListener('keydown', (e) => {
 </script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  const drawer = document.querySelector(".menu-drawer");
+  // IMPORTANT: you have TWO elements with id="mobile-navigation"
+  // This targets ONLY the drawer (it has class "menu-drawer")
+  const drawer = document.querySelector("#mobile-navigation.menu-drawer");
   if (!drawer) return;
 
-  const accordionItems = drawer.querySelectorAll(".accordion .accordion-item");
-  if (!accordionItems.length) return;
-
-  const FOCUSABLE_SEL = [
+  const FOCUSABLE = [
     "a[href]",
     "button:not([disabled])",
     "input:not([disabled])",
@@ -856,76 +855,75 @@ document.addEventListener("DOMContentLoaded", () => {
     "[tabindex]"
   ].join(",");
 
-  function disableFocusWithin(panel) {
-    // Mark the panel for debugging if you want
-    panel.setAttribute("data-focus-disabled", "true");
+  function setPanelFocusable(panel, enabled) {
+    const nodes = panel.querySelectorAll(FOCUSABLE);
 
-    panel.querySelectorAll(FOCUSABLE_SEL).forEach(el => {
-      // Don’t touch the accordion toggle buttons (they’re outside panel anyway, but safe)
-      if (el.matches(".accordion-item > button")) return;
-
-      // Store original tabindex once
+    nodes.forEach((el) => {
+      // Don’t mess with elements that are intentionally removed from tab order already
+      // but DO manage normal tabbables.
       if (!el.hasAttribute("data-orig-tabindex")) {
-        const t = el.getAttribute("tabindex");
-        el.setAttribute("data-orig-tabindex", t === null ? "__none__" : t);
+        const orig = el.getAttribute("tabindex");
+        el.setAttribute("data-orig-tabindex", orig === null ? "" : orig);
       }
 
-      // Force out of tab order
-      el.setAttribute("tabindex", "-1");
-
-      // Optional: if you have any form fields in there, disable them too
-      // (uncomment if needed)
-      // if (el.matches("input, select, textarea, button")) el.setAttribute("disabled", "disabled");
-
-      // Optional: block mouse clicks while closed (usually not necessary for your case)
-      // el.style.pointerEvents = "none";
+      if (enabled) {
+        const orig = el.getAttribute("data-orig-tabindex");
+        if (orig === "") el.removeAttribute("tabindex");
+        else el.setAttribute("tabindex", orig);
+        el.removeAttribute("aria-hidden");
+      } else {
+        el.setAttribute("tabindex", "-1");
+        // Optional but nice: helps SR users understand the region is not currently available
+        // (This does not replace proper aria-controls/aria-labelledby wiring, but it helps.)
+        el.setAttribute("aria-hidden", "true");
+      }
     });
   }
 
-  function enableFocusWithin(panel) {
-    panel.removeAttribute("data-focus-disabled");
-
-    panel.querySelectorAll("[data-orig-tabindex]").forEach(el => {
-      const orig = el.getAttribute("data-orig-tabindex");
-      if (orig === "__none__") el.removeAttribute("tabindex");
-      else el.setAttribute("tabindex", orig);
-
-      el.removeAttribute("data-orig-tabindex");
-
-      // Optional reversal if you disabled form fields / pointer events
-      // el.removeAttribute("disabled");
-      // el.style.pointerEvents = "";
-    });
-  }
-
-  function syncItem(item) {
+  function syncAccordionItem(item) {
     const btn = item.querySelector(":scope > button[aria-expanded]");
     const panel = item.querySelector(":scope > .accordion-content");
     if (!btn || !panel) return;
 
-    const isOpen = btn.getAttribute("aria-expanded") === "true";
-    if (!isOpen) disableFocusWithin(panel);
-    else enableFocusWithin(panel);
+    const expanded = btn.getAttribute("aria-expanded") === "true";
+    setPanelFocusable(panel, expanded);
   }
 
   function syncAll() {
-    accordionItems.forEach(syncItem);
+    drawer.querySelectorAll(".accordion-item").forEach(syncAccordionItem);
   }
 
-  // Initial
+  // 1) Initial sync
   syncAll();
 
-  // If your theme toggles aria-expanded in JS, observe that (most reliable)
-  const mo = new MutationObserver(syncAll);
-  accordionItems.forEach(item => {
-    const btn = item.querySelector(":scope > button[aria-expanded]");
-    if (btn) mo.observe(btn, { attributes: true, attributeFilter: ["aria-expanded"] });
+  // 2) Keep in sync when accordions toggle (your buttons already update aria-expanded)
+  drawer.addEventListener("click", (e) => {
+    const btn = e.target.closest(".accordion-item > button[aria-expanded]");
+    if (!btn) return;
+
+    // aria-expanded may update after your handler runs, so defer one tick
+    setTimeout(() => {
+      const item = btn.closest(".accordion-item");
+      if (item) syncAccordionItem(item);
+    }, 0);
   });
 
-  // Also resync after interactions (covers any non-standard updates)
-  drawer.addEventListener("click", () => requestAnimationFrame(syncAll), true);
-  drawer.addEventListener("keydown", () => requestAnimationFrame(syncAll), true);
+  // 3) Also watch aria-expanded changes (covers toggles triggered by keyboard handlers, etc.)
+  const mo = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === "attributes" && m.attributeName === "aria-expanded") {
+        const btn = m.target;
+        const item = btn.closest(".accordion-item");
+        if (item) syncAccordionItem(item);
+      }
+    }
+  });
+
+  drawer.querySelectorAll(".accordion-item > button[aria-expanded]").forEach((btn) => {
+    mo.observe(btn, { attributes: true });
+  });
 });
+
 </script>
 
 {% schema %}
