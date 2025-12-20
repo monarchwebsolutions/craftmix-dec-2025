@@ -635,6 +635,173 @@ document.addEventListener('keydown', (e) => {
     }
   </script>
 {%- endif -%}
+<script>
+// Trap focus in mobile menu
+document.addEventListener('DOMContentLoaded', () => {
+  const trigger = document.getElementById('mobile-navigation');
+  if (!trigger) return;
+
+  /**
+   * Update this selector to match your actual mobile drawer element.
+   * Common ones: #MobileNav, #mobile-menu, [data-mobile-nav], etc.
+   */
+  const DRAWER_SELECTOR = '#x-mobile-nav, #MobileNav, #mobile-menu, [data-mobile-nav], .mobile-nav, .mobile-menu';
+
+  const FOCUSABLE = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(',');
+
+  let lastFocused = null;
+  let activeDrawer = null;
+
+  function getDrawer() {
+    return document.querySelector(DRAWER_SELECTOR);
+  }
+
+  // Drawer open detection that works for most “off-canvas” menus
+  function isDrawerOpen(el) {
+    if (!el) return false;
+    if (el.hasAttribute('hidden')) return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+
+    const cs = window.getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+
+    // Many drawers are translated off-screen; visibility checks won’t catch that.
+    // If your drawer uses a class like "open" or "active", add it here:
+    // if (!el.classList.contains('open')) return false;
+
+    return true;
+  }
+
+  function getFocusables(container) {
+    return Array.from(container.querySelectorAll(FOCUSABLE))
+      .filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true' && el.offsetParent !== null);
+  }
+
+  function closeDrawerAndReturnFocus() {
+    // Prefer Alpine store close() if available
+    try {
+      if (window.Alpine?.store && Alpine.store('xMobileNav')?.close) {
+        Alpine.store('xMobileNav').close();
+      } else {
+        // Fallback: click a close button in the drawer if present
+        const closeBtn =
+          activeDrawer?.querySelector('[data-mobile-nav-close], .mobile-nav__close, .mobile-menu__close, button[aria-label="Close"], button[aria-label="Close menu"]');
+        if (closeBtn) closeBtn.click();
+      }
+    } catch (err) {}
+
+    // Restore focus to trigger
+    if (trigger) trigger.focus();
+
+    teardownTrap();
+  }
+
+  function onKeydown(e) {
+    if (!activeDrawer || !isDrawerOpen(activeDrawer)) return;
+
+    // ESC closes
+    if (e.key === 'Escape' || e.keyCode === 27) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeDrawerAndReturnFocus();
+      return;
+    }
+
+    // TAB traps
+    if (e.key !== 'Tab') return;
+
+    const focusables = getFocusables(activeDrawer);
+    if (!focusables.length) {
+      e.preventDefault();
+      return;
+    }
+
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const current = document.activeElement;
+
+    // Shift+Tab on first -> last
+    if (e.shiftKey && (current === first || !activeDrawer.contains(current))) {
+      e.preventDefault();
+      last.focus();
+      return;
+    }
+
+    // Tab on last -> first
+    if (!e.shiftKey && current === last) {
+      e.preventDefault();
+      first.focus();
+      return;
+    }
+  }
+
+  function setupTrap(drawer) {
+    if (!drawer) return;
+    activeDrawer = drawer;
+    lastFocused = document.activeElement;
+
+    // Make the drawer focusable as a last resort (doesn’t affect styling)
+    if (!activeDrawer.hasAttribute('tabindex')) {
+      activeDrawer.setAttribute('tabindex', '-1');
+    }
+
+    // Attach keydown at capture phase so it wins over other handlers
+    document.addEventListener('keydown', onKeydown, true);
+
+    // Move focus into drawer
+    const focusables = getFocusables(activeDrawer);
+    if (focusables.length) {
+      focusables[0].focus();
+    } else {
+      activeDrawer.focus();
+    }
+  }
+
+  function teardownTrap() {
+    document.removeEventListener('keydown', onKeydown, true);
+    activeDrawer = null;
+    lastFocused = null;
+  }
+
+  // When user opens the menu, activate trap after it renders
+  trigger.addEventListener('click', () => {
+    window.setTimeout(() => {
+      const drawer = getDrawer();
+      if (drawer && isDrawerOpen(drawer)) setupTrap(drawer);
+    }, 50);
+  });
+
+  // Optional: also activate/deactivate via mutation observer (handles non-click opens)
+  const mo = new MutationObserver(() => {
+    const drawer = getDrawer();
+    if (!drawer) return;
+
+    const open = isDrawerOpen(drawer);
+
+    if (open && !activeDrawer) {
+      setupTrap(drawer);
+    }
+
+    if (!open && activeDrawer) {
+      teardownTrap();
+      // If focus is stuck in a now-closed drawer, put it back on the trigger
+      if (trigger && document.activeElement && drawer.contains(document.activeElement)) {
+        trigger.focus();
+      }
+    }
+  });
+
+  mo.observe(document.body, { childList: true, subtree: true, attributes: true });
+});
+</script>
+
 {% schema %}
 {
   "name": "t:sections.header.name",
