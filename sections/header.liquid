@@ -434,7 +434,7 @@ document.addEventListener('keydown', (e) => {
           {% endcomment %}                  
           {% unless template contains 'lander' or template contains 'landing' %}
           <button
-            id="mobile-navigation"
+            id="mobile-navigation-button"
             @click="$store.xMobileNav.open()" 
             class="relative w-11 h-8 px-3 py-2.5 cursor-pointer opacity-70{%- unless section.settings.mobile_header_layout == 'center-left' %} -right-3{% else %} -left-3{% endunless -%}"
           >
