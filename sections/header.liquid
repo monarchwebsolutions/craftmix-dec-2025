@@ -839,6 +839,94 @@ document.addEventListener('keydown', (e) => {
   }
 })();
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const drawer = document.querySelector(".menu-drawer");
+  if (!drawer) return;
+
+  const accordionItems = drawer.querySelectorAll(".accordion .accordion-item");
+  if (!accordionItems.length) return;
+
+  const FOCUSABLE_SEL = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]"
+  ].join(",");
+
+  function disableFocusWithin(panel) {
+    // Mark the panel for debugging if you want
+    panel.setAttribute("data-focus-disabled", "true");
+
+    panel.querySelectorAll(FOCUSABLE_SEL).forEach(el => {
+      // Don’t touch the accordion toggle buttons (they’re outside panel anyway, but safe)
+      if (el.matches(".accordion-item > button")) return;
+
+      // Store original tabindex once
+      if (!el.hasAttribute("data-orig-tabindex")) {
+        const t = el.getAttribute("tabindex");
+        el.setAttribute("data-orig-tabindex", t === null ? "__none__" : t);
+      }
+
+      // Force out of tab order
+      el.setAttribute("tabindex", "-1");
+
+      // Optional: if you have any form fields in there, disable them too
+      // (uncomment if needed)
+      // if (el.matches("input, select, textarea, button")) el.setAttribute("disabled", "disabled");
+
+      // Optional: block mouse clicks while closed (usually not necessary for your case)
+      // el.style.pointerEvents = "none";
+    });
+  }
+
+  function enableFocusWithin(panel) {
+    panel.removeAttribute("data-focus-disabled");
+
+    panel.querySelectorAll("[data-orig-tabindex]").forEach(el => {
+      const orig = el.getAttribute("data-orig-tabindex");
+      if (orig === "__none__") el.removeAttribute("tabindex");
+      else el.setAttribute("tabindex", orig);
+
+      el.removeAttribute("data-orig-tabindex");
+
+      // Optional reversal if you disabled form fields / pointer events
+      // el.removeAttribute("disabled");
+      // el.style.pointerEvents = "";
+    });
+  }
+
+  function syncItem(item) {
+    const btn = item.querySelector(":scope > button[aria-expanded]");
+    const panel = item.querySelector(":scope > .accordion-content");
+    if (!btn || !panel) return;
+
+    const isOpen = btn.getAttribute("aria-expanded") === "true";
+    if (!isOpen) disableFocusWithin(panel);
+    else enableFocusWithin(panel);
+  }
+
+  function syncAll() {
+    accordionItems.forEach(syncItem);
+  }
+
+  // Initial
+  syncAll();
+
+  // If your theme toggles aria-expanded in JS, observe that (most reliable)
+  const mo = new MutationObserver(syncAll);
+  accordionItems.forEach(item => {
+    const btn = item.querySelector(":scope > button[aria-expanded]");
+    if (btn) mo.observe(btn, { attributes: true, attributeFilter: ["aria-expanded"] });
+  });
+
+  // Also resync after interactions (covers any non-standard updates)
+  drawer.addEventListener("click", () => requestAnimationFrame(syncAll), true);
+  drawer.addEventListener("keydown", () => requestAnimationFrame(syncAll), true);
+});
+</script>
 
 {% schema %}
 {
