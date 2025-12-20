@@ -131,55 +131,72 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  function closeAboutDropdowns() {
-    // 1) Hide ALL toggle menus (handles duplicate DOM nodes)
+(function () {
+  function isEsc(e) {
+    return e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27;
+  }
+
+  function closeAbout() {
+    // Close any open dropdown menus (handles duplicate toggle-menu nodes)
     document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu').forEach(menu => {
-      if (!menu.classList.contains('toggle-menu-hidden')) {
-        menu.classList.add('toggle-menu-hidden');
+      menu.classList.add('toggle-menu-hidden');
+    });
+
+    // Reset trigger styling + chevrons
+    document.querySelectorAll('li.tree-menu.has-dropdown').forEach(li => {
+      const relativeDiv = li.querySelector('div.relative');
+      if (relativeDiv) {
+        relativeDiv.style.background = '';
+        relativeDiv.style.border = '2px solid transparent';
+        relativeDiv.style.borderRadius = '';
+      }
+
+      const trigger = li.querySelector('a.tree-menu-item');
+      if (trigger) {
+        trigger.classList.remove('clicked');
+        const svg = trigger.querySelector('svg');
+        if (svg) svg.classList.remove('rotated');
       }
     });
 
-    // 2) Reset the pill styling on ALL dropdown triggers (matches your outside-click logic)
-    document.querySelectorAll('li.tree-menu > .relative').forEach(relativeDiv => {
-      relativeDiv.style.background = '';
-      relativeDiv.style.border = '2px solid transparent';
-      relativeDiv.style.borderRadius = '';
-    });
+    // If Alpine store exists, also ask it to close (keeps state consistent)
+    try {
+      if (window.Alpine && typeof window.Alpine.store === 'function') {
+        const store = window.Alpine.store('xHeaderMenu');
+        if (store && typeof store.hideMenu === 'function') {
+          const nav = document.querySelector('nav[x-on\\:click\\.away]');
+          if (nav) store.hideMenu(nav);
+        }
+      }
+    } catch (err) {}
 
-    // 3) Unrotate ALL chevrons and remove "clicked" state
-    document.querySelectorAll('a.tree-menu-item').forEach(btn => {
-      btn.classList.remove('clicked');
-      const svg = btn.querySelector('svg');
-      if (svg) svg.classList.remove('rotated');
-    });
-  }
-
-  document.addEventListener('keydown', (e) => {
-    // Support both modern + older key detection
-    const isEsc = (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27);
-    if (!isEsc) return;
-
-    // Only act if any dropdown is actually visible (prevents side effects)
-    const anyVisibleDropdown = Array.from(
-      document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu')
-    ).some(menu => {
-      const cs = getComputedStyle(menu);
-      // treat as "open" if it can be seen/clicked
-      return menu.offsetParent !== null && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0';
-    });
-
-    if (!anyVisibleDropdown) return;
-
-    e.preventDefault();
-    closeAboutDropdowns();
-
-    // Return focus to the About trigger if it's present
+    // Return focus to About trigger (best effort)
     const aboutTrigger = Array.from(document.querySelectorAll('a.tree-menu-item'))
       .find(a => a.textContent && a.textContent.trim() === 'About');
     if (aboutTrigger) aboutTrigger.focus();
-  }, true);
-});
+  }
+
+  function anyDropdownOpen() {
+    // Treat as "open" if any dropdown is visible/clickable
+    return Array.from(document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu')).some(menu => {
+      const cs = getComputedStyle(menu);
+      return menu.offsetParent !== null && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
+    });
+  }
+
+  function handler(e) {
+    if (!isEsc(e)) return;
+    if (!anyDropdownOpen()) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    closeAbout();
+  }
+
+  // Bind at window level, capture phase, both keydown and keyup
+  window.addEventListener('keydown', handler, true);
+  window.addEventListener('keyup', handler, true);
+})();
 </script>
 
 
