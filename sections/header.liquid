@@ -130,6 +130,58 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<script>
+// Close dropdown menus with ESC button
+document.addEventListener('DOMContentLoaded', () => {
+  // Listen globally for ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+
+    // Find any ABOUT-like open dropdowns in the header
+    // "Open" = .toggle-menu that does NOT have toggle-menu-hidden
+    const openMenus = document.querySelectorAll('li.tree-menu.has-dropdown .toggle-menu:not(.toggle-menu-hidden)');
+
+    if (!openMenus.length) return;
+
+    e.preventDefault();
+
+    openMenus.forEach(menu => {
+      const parentLi = menu.closest('li.tree-menu.has-dropdown');
+      if (!parentLi) return;
+
+      // Prefer the trigger within THIS li (so we close the right one)
+      const trigger = parentLi.querySelector('a.tree-menu-item');
+      const relativeDiv = parentLi.querySelector('div.relative');
+
+      // Close the menu (match your existing mechanic)
+      menu.classList.add('toggle-menu-hidden');
+
+      // Reset pill styling (match your script)
+      if (relativeDiv) {
+        relativeDiv.style.background = '';
+        relativeDiv.style.border = '2px solid transparent';
+        relativeDiv.style.borderRadius = '';
+      }
+
+      // Unrotate chevron
+      if (trigger) {
+        const svg = trigger.querySelector('svg');
+        if (svg && svg.classList.contains('rotated')) {
+          svg.classList.remove('rotated');
+        }
+
+        // Remove your "clicked" class if present
+        trigger.classList.remove('clicked');
+
+        // Return focus to trigger
+        trigger.focus();
+      }
+    });
+  }, true);
+});
+</script>
+
+
 {%- liquid
   assign areas = "heading navigation icons"
   assign areas2 =  ". . ."
