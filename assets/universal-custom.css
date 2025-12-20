@@ -5,7 +5,10 @@
   padding: 0;
   box-sizing: border-box;
 }
-
+:focus-visible {
+  outline: 3px solid #e10600; /* accessible red */
+  outline-offset: 3px;
+}
 ul {
   list-style: none;
 }
