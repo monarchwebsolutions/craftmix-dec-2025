@@ -840,92 +840,9 @@ document.addEventListener('keydown', (e) => {
 })();
 </script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  // IMPORTANT: you have TWO elements with id="mobile-navigation"
-  // This targets ONLY the drawer (it has class "menu-drawer")
-  const drawer = document.querySelector("#mobile-navigation.menu-drawer");
-  if (!drawer) return;
-
-  const FOCUSABLE = [
-    "a[href]",
-    "button:not([disabled])",
-    "input:not([disabled])",
-    "select:not([disabled])",
-    "textarea:not([disabled])",
-    "[tabindex]"
-  ].join(",");
-
-  function setPanelFocusable(panel, enabled) {
-    const nodes = panel.querySelectorAll(FOCUSABLE);
-
-    nodes.forEach((el) => {
-      // Don’t mess with elements that are intentionally removed from tab order already
-      // but DO manage normal tabbables.
-      if (!el.hasAttribute("data-orig-tabindex")) {
-        const orig = el.getAttribute("tabindex");
-        el.setAttribute("data-orig-tabindex", orig === null ? "" : orig);
-      }
-
-      if (enabled) {
-        const orig = el.getAttribute("data-orig-tabindex");
-        if (orig === "") el.removeAttribute("tabindex");
-        else el.setAttribute("tabindex", orig);
-        el.removeAttribute("aria-hidden");
-      } else {
-        el.setAttribute("tabindex", "-1");
-        // Optional but nice: helps SR users understand the region is not currently available
-        // (This does not replace proper aria-controls/aria-labelledby wiring, but it helps.)
-        el.setAttribute("aria-hidden", "true");
-      }
-    });
-  }
-
-  function syncAccordionItem(item) {
-    const btn = item.querySelector(":scope > button[aria-expanded]");
-    const panel = item.querySelector(":scope > .accordion-content");
-    if (!btn || !panel) return;
-
-    const expanded = btn.getAttribute("aria-expanded") === "true";
-    setPanelFocusable(panel, expanded);
-  }
-
-  function syncAll() {
-    drawer.querySelectorAll(".accordion-item").forEach(syncAccordionItem);
-  }
-
-  // 1) Initial sync
-  syncAll();
-
-  // 2) Keep in sync when accordions toggle (your buttons already update aria-expanded)
-  drawer.addEventListener("click", (e) => {
-    const btn = e.target.closest(".accordion-item > button[aria-expanded]");
-    if (!btn) return;
-
-    // aria-expanded may update after your handler runs, so defer one tick
-    setTimeout(() => {
-      const item = btn.closest(".accordion-item");
-      if (item) syncAccordionItem(item);
-    }, 0);
-  });
-
-  // 3) Also watch aria-expanded changes (covers toggles triggered by keyboard handlers, etc.)
-  const mo = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      if (m.type === "attributes" && m.attributeName === "aria-expanded") {
-        const btn = m.target;
-        const item = btn.closest(".accordion-item");
-        if (item) syncAccordionItem(item);
-      }
-    }
-  });
-
-  drawer.querySelectorAll(".accordion-item > button[aria-expanded]").forEach((btn) => {
-    mo.observe(btn, { attributes: true });
-  });
-});
+// Only focus on expanded menu items in mobile menu
 
 </script>
-
 {% schema %}
 {
   "name": "t:sections.header.name",
