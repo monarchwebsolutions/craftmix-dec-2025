@@ -5,10 +5,6 @@
   padding: 0;
   box-sizing: border-box;
 }
-*:focus-visible {
-  outline: 3px solid #e10600 !important; /* accessible red */
-  outline-offset: 3px;
-}
 ul {
   list-style: none;
 }
@@ -532,8 +528,6 @@ div[data-rebuy-cart-anchor="header"] {
 }
 .rebuy-cart__flyout-item-media img {
   margin: auto !important;
-  width: 100% !important;
-  height: 100% !important;
 }
 #rebuy-cart-title {
   text-transform: unset;
