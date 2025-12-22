@@ -1002,46 +1002,80 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 </script>
 <script>
+// Rebuy Smart Cart upsell widget - normalize focus + prevent widget from being skipped
 (function () {
   const WIDGET_ID = "215185";
 
-  function getRoot() {
+  // ---------- Helpers ----------
+  function getWidgetRoot() {
     return document.querySelector(`[data-rebuy-id="${WIDGET_ID}"]`);
+  }
+
+  // Update if your cart root selector differs (first match wins)
+  const CART_ROOT_SELECTORS = [
+    ".rebuy-smartcart",
+    ".rebuy-cart",
+    "[data-rebuy-smartcart]",
+    "#rebuy-smartcart"
+  ];
+
+  function getCartRoot() {
+    for (const sel of CART_ROOT_SELECTORS) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function isVisible(el) {
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return false;
+    if (el.hasAttribute("hidden")) return false;
+
+    // fixed overlays sometimes have no offsetParent
+    return el.offsetParent !== null || cs.position === "fixed";
   }
 
   function setTabbable(el, tabbable) {
     if (!el) return;
     if (tabbable) {
-      el.removeAttribute("tabindex"); // let native focusability work
-      // If Rebuy gave it tabindex="-1", undo it
+      // If Rebuy set tabindex="-1", undo it
       if (el.getAttribute("tabindex") === "-1") el.removeAttribute("tabindex");
+      // If it had tabindex="0" injected, let native focusability rule
+      // (removing tabindex is fine; anchors/buttons/selects remain focusable)
+      if (el.hasAttribute("tabindex")) el.removeAttribute("tabindex");
     } else {
       el.setAttribute("tabindex", "-1");
     }
   }
 
+  // ---------- 1) Normalization (your script) ----------
   function normalize(root) {
     if (!root) return;
 
-    // 1) Remove tabindex from the price span (we already know this is wrong)
-    root.querySelectorAll(".rebuy-money span[tabindex]").forEach(el => {
+    // A) Remove tabindex from price span
+    root.querySelectorAll(".rebuy-money span[tabindex]").forEach((el) => {
       el.removeAttribute("tabindex");
     });
 
-    // 2) Normalize focusability by slide visibility
+    // B) Normalize focusability by slide visibility
     const slides = root.querySelectorAll(".splide__slide");
-    slides.forEach(slide => {
+    slides.forEach((slide) => {
       const isHidden =
         slide.getAttribute("aria-hidden") === "true" ||
         slide.classList.contains("splide__slide--clone") ||
         slide.classList.contains("is-hidden");
 
-      const focusables = slide.querySelectorAll("a[href], button, select, input, textarea, [role='button'], [role='link'], [role='combobox']");
-      focusables.forEach(el => setTabbable(el, !isHidden));
+      const focusables = slide.querySelectorAll(
+        "a[href], button, select, input, textarea, [role='button'], [role='link'], [role='combobox']"
+      );
+
+      focusables.forEach((el) => setTabbable(el, !isHidden));
     });
 
-    // 3) Remove tabindex=0 from non-interactive junk (div/span etc.)
-    root.querySelectorAll('[tabindex="0"]').forEach(el => {
+    // C) Remove tabindex=0 from non-interactive junk
+    root.querySelectorAll('[tabindex="0"]').forEach((el) => {
       const tag = el.tagName.toLowerCase();
       const isNative =
         tag === "button" ||
@@ -1049,6 +1083,7 @@ document.addEventListener("DOMContentLoaded", () => {
         tag === "select" ||
         tag === "input" ||
         tag === "textarea";
+
       const role = el.getAttribute("role");
       const isRoleInteractive = role === "button" || role === "link" || role === "combobox";
 
@@ -1058,24 +1093,116 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ---------- 2) “Nudge on open” so widget is not skipped ----------
+  function getFirstFocusableInWidget(widgetRoot) {
+    if (!widgetRoot) return null;
+
+    // Prefer a real control in your widget
+    const preferred =
+      widgetRoot.querySelector("button.rebuy-button") ||
+      widgetRoot.querySelector("select.rebuy-select");
+
+    if (preferred) return preferred;
+
+    return widgetRoot.querySelector(
+      'a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]):not([type="hidden"]), [tabindex]:not([tabindex="-1"])'
+    );
+  }
+
+  function shouldNudgeFocus(cartRoot, widgetRoot) {
+    const active = document.activeElement;
+
+    if (!cartRoot || !widgetRoot) return false;
+
+    // If focus is already inside widget, do nothing
+    if (active && widgetRoot.contains(active)) return false;
+
+    // If focus is outside cart (or body), cart focus mgmt failed
+    if (!active || active === document.body || !cartRoot.contains(active)) return true;
+
+    // If focus is inside cart but on a non-interactive container, nudge
+    const tag = active.tagName ? active.tagName.toLowerCase() : "";
+    return tag === "div" || tag === "section" || tag === "main";
+  }
+
+  function nudgeFocusIntoWidgetOncePerOpen() {
+    const cartRoot = getCartRoot();
+    const widgetRoot = getWidgetRoot();
+
+    if (!isVisible(cartRoot)) {
+      // cart closed: reset marker
+      if (cartRoot) cartRoot.removeAttribute("data-widget-focus-nudged");
+      return;
+    }
+
+    // only run once per open
+    if (cartRoot.getAttribute("data-widget-focus-nudged") === "true") return;
+
+    // The widget may mount after the cart becomes visible; retry briefly
+    let tries = 0;
+    const attempt = () => {
+      tries++;
+
+      const c = getCartRoot();
+      const w = getWidgetRoot();
+
+      if (!isVisible(c) || !w || !isVisible(w)) {
+        if (tries < 20) return setTimeout(attempt, 50);
+        return;
+      }
+
+      // normalize right before nudging to avoid focusing something that becomes untabbable
+      normalize(w);
+
+      if (shouldNudgeFocus(c, w)) {
+        const first = getFirstFocusableInWidget(w);
+        if (first) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              try { first.focus(); } catch (e) {}
+            });
+          });
+        }
+      }
+
+      c.setAttribute("data-widget-focus-nudged", "true");
+    };
+
+    attempt();
+  }
+
+  // ---------- Boot / Observers ----------
   function boot() {
-    const root = getRoot();
+    const root = getWidgetRoot();
     if (!root) return false;
 
     normalize(root);
-
-    if (!window.__rebuyFocusStabilizer215185) {
-      const obs = new MutationObserver(() => {
-        const r = getRoot();
-        if (r) normalize(r);
-      });
-      obs.observe(root, { subtree: true, childList: true, attributes: true });
-      window.__rebuyFocusStabilizer215185 = obs;
-    }
+    nudgeFocusIntoWidgetOncePerOpen();
     return true;
   }
 
-  // retry (Smart Cart mounts late)
+  // Single global observer to handle:
+  // - widget injection/re-render
+  // - cart open/close
+  if (!window.__rebuyFocusStabilizerAndNudge215185) {
+    const obs = new MutationObserver(() => {
+      const root = getWidgetRoot();
+      if (root) normalize(root);
+      nudgeFocusIntoWidgetOncePerOpen();
+    });
+
+    obs.observe(document.documentElement, { subtree: true, childList: true, attributes: true });
+    window.__rebuyFocusStabilizerAndNudge215185 = obs;
+
+    // Also try after any click that might open cart
+    document.addEventListener(
+      "click",
+      () => setTimeout(() => nudgeFocusIntoWidgetOncePerOpen(), 0),
+      true
+    );
+  }
+
+  // Retry on load (Smart Cart mounts late)
   let tries = 0;
   (function retry() {
     tries++;
@@ -1084,6 +1211,7 @@ document.addEventListener("DOMContentLoaded", () => {
   })();
 })();
 </script>
+
 
 {% schema %}
 {
