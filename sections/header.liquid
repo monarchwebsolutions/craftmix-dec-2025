@@ -1001,6 +1001,76 @@ document.addEventListener("DOMContentLoaded", () => {
   }, true);
 })();
 </script>
+<script>
+(function () {
+  const WIDGET_ID = "215185";
+
+  function getWidgetRoot() {
+    return document.querySelector(`[data-rebuy-id="${WIDGET_ID}"]`);
+  }
+
+  function isTrulyInteractive(el) {
+    if (!el) return false;
+    const tag = el.tagName.toLowerCase();
+    if (tag === "button") return true;
+    if (tag === "select" || tag === "input" || tag === "textarea") return true;
+    if (tag === "a" && el.hasAttribute("href")) return true;
+    // Allow explicit interactive roles
+    const role = el.getAttribute("role");
+    if (role === "button" || role === "link" || role === "combobox") return true;
+    return false;
+  }
+
+  function normalizeTabOrder(root) {
+    if (!root) return;
+
+    // 1) Remove tabindex from price spans (your exact issue)
+    root.querySelectorAll(".rebuy-money span[tabindex]").forEach(el => {
+      el.removeAttribute("tabindex");
+    });
+
+    // 2) Remove tabindex from non-interactive elements that Rebuy made tabbable
+    root.querySelectorAll('[tabindex="0"]').forEach(el => {
+      if (!isTrulyInteractive(el)) {
+        el.removeAttribute("tabindex");
+      }
+    });
+
+    // 3) Optional: prevent Splide/clones/offscreen slides from being tabbable
+    // If you see clones, they often have class "splide__slide--clone" or aria-hidden=true.
+    root.querySelectorAll('.splide__slide[aria-hidden="true"] a, .splide__slide[aria-hidden="true"] button, .splide__slide[aria-hidden="true"] select').forEach(el => {
+      el.setAttribute("tabindex", "-1");
+    });
+  }
+
+  function boot() {
+    const root = getWidgetRoot();
+    if (!root) return false;
+
+    normalizeTabOrder(root);
+
+    // Watch for Smart Cart updates / re-renders and re-normalize
+    if (!window.__rebuyObserver215185) {
+      const observer = new MutationObserver(() => {
+        const r = getWidgetRoot();
+        if (r) normalizeTabOrder(r);
+      });
+      observer.observe(root, { subtree: true, childList: true, attributes: true });
+      window.__rebuyObserver215185 = observer;
+    }
+
+    return true;
+  }
+
+  // Try immediately + retry a few times (handles timing)
+  let tries = 0;
+  (function retry() {
+    tries += 1;
+    if (boot()) return;
+    if (tries < 30) setTimeout(retry, 250);
+  })();
+})();
+</script>
 
 {% schema %}
 {
