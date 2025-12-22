@@ -24,6 +24,11 @@
   outline:none !important;
 }
 
+.rebuy-cart__flyout-item-product-title{
+  max-width:90%;
+  padding-right:0;
+}
+
 .rebuy-cart__flyout .product-img-link:focus-visible,
 {
   outline:none !important;
