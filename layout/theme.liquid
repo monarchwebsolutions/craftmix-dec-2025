@@ -26,6 +26,12 @@
       href="{{ 'universal-custom.css' | asset_url }}"
       onload="this.onload=null;this.rel='stylesheet'"
     >
+    <link
+      rel="preload"
+      as="style"
+      href="{{ 'keyboard-nav.css' | asset_url }}"
+      onload="this.onload=null;this.rel='stylesheet'"
+    >
     <link rel="preload" as="font" href="{{ 'Appetite-Regular.woff2' | asset_url }}" type="font/woff2" crossorigin>
 
     {% if template == 'index' %}
