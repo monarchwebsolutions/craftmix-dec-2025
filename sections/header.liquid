@@ -1005,69 +1005,82 @@ document.addEventListener("DOMContentLoaded", () => {
 (function () {
   const WIDGET_ID = "215185";
 
-  function getWidgetRoot() {
+  function getRoot() {
     return document.querySelector(`[data-rebuy-id="${WIDGET_ID}"]`);
   }
 
-  function isTrulyInteractive(el) {
-    if (!el) return false;
-    const tag = el.tagName.toLowerCase();
-    if (tag === "button") return true;
-    if (tag === "select" || tag === "input" || tag === "textarea") return true;
-    if (tag === "a" && el.hasAttribute("href")) return true;
-    // Allow explicit interactive roles
-    const role = el.getAttribute("role");
-    if (role === "button" || role === "link" || role === "combobox") return true;
-    return false;
+  function setTabbable(el, tabbable) {
+    if (!el) return;
+    if (tabbable) {
+      el.removeAttribute("tabindex"); // let native focusability work
+      // If Rebuy gave it tabindex="-1", undo it
+      if (el.getAttribute("tabindex") === "-1") el.removeAttribute("tabindex");
+    } else {
+      el.setAttribute("tabindex", "-1");
+    }
   }
 
-  function normalizeTabOrder(root) {
+  function normalize(root) {
     if (!root) return;
 
-    // 1) Remove tabindex from price spans (your exact issue)
+    // 1) Remove tabindex from the price span (we already know this is wrong)
     root.querySelectorAll(".rebuy-money span[tabindex]").forEach(el => {
       el.removeAttribute("tabindex");
     });
 
-    // 2) Remove tabindex from non-interactive elements that Rebuy made tabbable
-    root.querySelectorAll('[tabindex="0"]').forEach(el => {
-      if (!isTrulyInteractive(el)) {
-        el.removeAttribute("tabindex");
-      }
+    // 2) Normalize focusability by slide visibility
+    const slides = root.querySelectorAll(".splide__slide");
+    slides.forEach(slide => {
+      const isHidden =
+        slide.getAttribute("aria-hidden") === "true" ||
+        slide.classList.contains("splide__slide--clone") ||
+        slide.classList.contains("is-hidden");
+
+      const focusables = slide.querySelectorAll("a[href], button, select, input, textarea, [role='button'], [role='link'], [role='combobox']");
+      focusables.forEach(el => setTabbable(el, !isHidden));
     });
 
-    // 3) Optional: prevent Splide/clones/offscreen slides from being tabbable
-    // If you see clones, they often have class "splide__slide--clone" or aria-hidden=true.
-    root.querySelectorAll('.splide__slide[aria-hidden="true"] a, .splide__slide[aria-hidden="true"] button, .splide__slide[aria-hidden="true"] select').forEach(el => {
-      el.setAttribute("tabindex", "-1");
+    // 3) Remove tabindex=0 from non-interactive junk (div/span etc.)
+    root.querySelectorAll('[tabindex="0"]').forEach(el => {
+      const tag = el.tagName.toLowerCase();
+      const isNative =
+        tag === "button" ||
+        (tag === "a" && el.hasAttribute("href")) ||
+        tag === "select" ||
+        tag === "input" ||
+        tag === "textarea";
+      const role = el.getAttribute("role");
+      const isRoleInteractive = role === "button" || role === "link" || role === "combobox";
+
+      if (!isNative && !isRoleInteractive) {
+        el.removeAttribute("tabindex");
+      }
     });
   }
 
   function boot() {
-    const root = getWidgetRoot();
+    const root = getRoot();
     if (!root) return false;
 
-    normalizeTabOrder(root);
+    normalize(root);
 
-    // Watch for Smart Cart updates / re-renders and re-normalize
-    if (!window.__rebuyObserver215185) {
-      const observer = new MutationObserver(() => {
-        const r = getWidgetRoot();
-        if (r) normalizeTabOrder(r);
+    if (!window.__rebuyFocusStabilizer215185) {
+      const obs = new MutationObserver(() => {
+        const r = getRoot();
+        if (r) normalize(r);
       });
-      observer.observe(root, { subtree: true, childList: true, attributes: true });
-      window.__rebuyObserver215185 = observer;
+      obs.observe(root, { subtree: true, childList: true, attributes: true });
+      window.__rebuyFocusStabilizer215185 = obs;
     }
-
     return true;
   }
 
-  // Try immediately + retry a few times (handles timing)
+  // retry (Smart Cart mounts late)
   let tries = 0;
   (function retry() {
-    tries += 1;
+    tries++;
     if (boot()) return;
-    if (tries < 30) setTimeout(retry, 250);
+    if (tries < 40) setTimeout(retry, 250);
   })();
 })();
 </script>
