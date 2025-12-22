@@ -24,13 +24,18 @@
   outline:none !important;
 }
 
+.rebuy-cart__flyout .product-img-link:focus-visible{
+  outline:none !important;
+  box-shadow: inset 0 0 0 3px #e10600 !important;
+  border-radius:11px;
+}
+
 .rebuy-cart__flyout-item-product-title{
   max-width:90%;
   padding-right:0;
 }
 
-.rebuy-cart__flyout .product-img-link:focus-visible{
-  outline:none !important;
-  box-shadow: inset 0 0 0 3px #e10600 !important;
-  border-radius:11px;
+.rebuy-cart__flyout-item-product-title:focus-visible{
+  outline: 3px solid #e10600 !important; /* accessible red */
+  outline-offset: 3px;
 }
