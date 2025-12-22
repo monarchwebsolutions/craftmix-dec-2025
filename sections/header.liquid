@@ -949,85 +949,58 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </script>
 <script>
-// Redirect focus to select dropdown in Rebuy Smart Cart when cross sell widget buttons are clicked
-console.log("Rebuy callback fired for 215185");
-function () {
-  // Prevent duplicate listeners when the cart re-renders
-  if (window.__rebuyFocusVariantSelect215185) return;
-  window.__rebuyFocusVariantSelect215185 = true;
-
+(function () {
   const WIDGET_ID = "215185";
-
-  function isInsideWidget(el) {
-    return !!el.closest(`[data-rebuy-id="${WIDGET_ID}"]`);
-  }
 
   function focusSelectFromButton(button) {
     const productBlock = button.closest(".rebuy-product-block");
     if (!productBlock) return;
 
-    // Rebuy may re-render / re-focus after click. Retry a few frames.
     let tries = 0;
-
-    function attempt() {
+    (function attempt() {
       tries += 1;
 
       const select = productBlock.querySelector("select.rebuy-select");
-      if (select) {
-        // Only focus once it's actually focusable/visible
+      if (select && !select.disabled) {
         const style = window.getComputedStyle(select);
-        const isHidden =
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          select.disabled;
-
-        if (!isHidden) {
+        const hidden = style.display === "none" || style.visibility === "hidden";
+        if (!hidden) {
           select.focus();
           return;
         }
       }
 
-      if (tries < 10) {
-        requestAnimationFrame(attempt);
-      }
-    }
-
-    // Start after the click handlers run
-    setTimeout(() => requestAnimationFrame(attempt), 0);
+      if (tries < 12) requestAnimationFrame(attempt);
+    })();
   }
 
-  // Mouse / touch
-  document.addEventListener(
-    "click",
-    (e) => {
-      const button = e.target.closest("button.rebuy-button");
-      if (!button) return;
-      if (!isInsideWidget(button)) return;
+  // Capture phase so we beat other handlers where possible
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest("button.rebuy-button");
+    if (!btn) return;
 
-      focusSelectFromButton(button);
-    },
-    true
-  );
+    // Scope to your widget instance in Smart Cart
+    const widgetRoot = btn.closest(`[data-rebuy-id="${WIDGET_ID}"]`);
+    if (!widgetRoot) return;
 
-  // Keyboard (Enter / Space)
-  document.addEventListener(
-    "keydown",
-    (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
+    // Let Rebuy do its click work, then focus
+    setTimeout(() => focusSelectFromButton(btn), 0);
+  }, true);
 
-      const button = e.target.closest("button.rebuy-button");
-      if (!button) return;
-      if (!isInsideWidget(button)) return;
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
 
-      // IMPORTANT: do NOT preventDefault; let Rebuy do its normal open behavior.
-      focusSelectFromButton(button);
-    },
-    true
-  );
-}
+    const btn = e.target.closest("button.rebuy-button");
+    if (!btn) return;
 
+    const widgetRoot = btn.closest(`[data-rebuy-id="${WIDGET_ID}"]`);
+    if (!widgetRoot) return;
 
+    setTimeout(() => focusSelectFromButton(btn), 0);
+  }, true);
+})();
 </script>
+
 {% schema %}
 {
   "name": "t:sections.header.name",
