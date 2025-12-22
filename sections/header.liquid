@@ -948,6 +948,48 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 </script>
+<script>
+// Redirect focus to select dropdown in Rebuy Smart Cart when cross sell widget buttons are clicked
+function (widget) {
+  const root = widget.el;
+  if (!root) return;
+
+  // Delegate so it survives re-renders
+  root.addEventListener('click', handleActivate, true);
+  root.addEventListener('keydown', handleKeyActivate, true);
+
+  function handleActivate(e) {
+    const button = e.target.closest('button.rebuy-button');
+    if (!button) return;
+
+    focusVariantSelect(button);
+  }
+
+  function handleKeyActivate(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+
+    const button = e.target.closest('button.rebuy-button');
+    if (!button) return;
+
+    e.preventDefault();
+    focusVariantSelect(button);
+  }
+
+  function focusVariantSelect(button) {
+    const productBlock = button.closest('.rebuy-product-block');
+    if (!productBlock) return;
+
+    // Give Rebuy a moment to reveal the select
+    setTimeout(() => {
+      const select = productBlock.querySelector('select.rebuy-select');
+      if (select) {
+        select.focus();
+      }
+    }, 0);
+  }
+}
+
+</script>
 {% schema %}
 {
   "name": "t:sections.header.name",
