@@ -1,3 +1,10 @@
+/* Universal */
+
+*:focus-visible {
+  outline: 3px solid #e10600 !important; /* accessible red */
+  outline-offset: 3px;
+}
+
 /* Rebuy Smart Cart */
 
 #rebuy-cart-close:focus-visible {
