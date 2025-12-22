@@ -42,5 +42,6 @@
 }
 
 .rebuy-cart__flyout .rebuy-cart__flyout-item-quantity-widget-button:focus-visible{
+  outline:none !important;
   box-shadow: inset 0 0 0 3px #e10600 !important;
 }
