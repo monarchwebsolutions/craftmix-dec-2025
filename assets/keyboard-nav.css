@@ -11,7 +11,7 @@
 #rebuy-cart-close:focus-visible {
   /* outline: 3px solid #e10600 !important; 
   outline-offset: 3px; */
-  box-shadow: inset 0 0 0 3px #e10600 !important;
+  box-shadow: inset 0 0 0 2px #e10600 !important;
 }
 
 .rebuy-cart__progress-bar-meter-fill::focus-visible{
