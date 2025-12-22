@@ -9,8 +9,8 @@
 
 [class^="announcement-nav-prev-sections"]:focus-visible,
 [class^="announcement-nav-next-sections"]:focus-visible {
-    outline:none !important;
-    box-shadow: inset 0 0 0 3px #e10600 !important;
+  outline:none !important;
+  box-shadow: inset 0 0 0 3px #e10600 !important;
 }
 
 /* Rebuy Smart Cart */
@@ -22,4 +22,9 @@
 
 .rebuy-cart__progress-bar-meter-fill::focus-visible{
   outline:none !important;
+}
+
+.rebuy-cart__flyout .product-img-link:focus-visible{
+  outline:none !important;
+  box-shadow: inset 0 0 0 3px #e10600 !important;
 }
