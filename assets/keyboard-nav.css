@@ -36,7 +36,7 @@
 }
 
 .rebuy-cart__flyout .rebuy-cart__flyout-item-product-title:focus-visible,
-.rebuy-cart__flyout .rebuy-cart__flyout-item-remove{
+.rebuy-cart__flyout .rebuy-cart__flyout-item-remove:focus-visible{
   outline: 3px solid #e10600 !important; /* accessible red */
   outline-offset: 3px;
 }
