@@ -1,3 +1,8 @@
+{% if product.metafields.custom.pdp_redirect != blank %}
+  <script>
+    window.location.replace("{{ product.metafields.custom.pdp_redirect }}");
+  </script>
+{% endif %}
 {%- liquid
   assign base_size_heading = settings.heading_base_size | times: 0.0225 
   assign font_size_heading = section.settings.title_size | times: 0.01 | times: base_size_heading
