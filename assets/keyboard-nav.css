@@ -41,10 +41,13 @@
 .rebuy-cart__flyout .rebuy-product-title-link:focus-visible,
 .rebuy-cart__flyout .rebuy-button:focus-visible,
 .rebuy-cart__flyout .rebuy-select:focus-visible,
-.rebuy-cart__flyout button:focus-visible,
-.tool-tip-left a:focus-visible .tool-tip-image{
+.rebuy-cart__flyout button:focus-visible{
   outline: 3px solid #e10600 !important; /* accessible red */
   outline-offset: 3px;
+}
+
+.tool-tip-left a:focus-visible .tool-tip-image{
+  outline: 3px solid #e10600 !important; /* accessible red */
 }
 
 .rebuy-cart__flyout .rebuy-cart__flyout-item-quantity-widget-button:focus-visible{
