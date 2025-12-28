@@ -686,135 +686,94 @@ For inquiries or permissions, contact daniel@section.store
 </div>
 <script>
 (() => {
-  const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
+  const SECTION = document.currentScript.closest('.hp-scrolling-products-container');
+  if (!SECTION) return;
+
   const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
   if (!VIEWPORT) return;
 
-  const COUNT = parseInt('{{ count }}', 10) || 0;
+  const COUNT = parseInt('{{ count }}', 10);
   if (!COUNT) return;
 
   const SLIDE_SELECTOR = '.swiper-slide';
   const ATC_SELECTOR = '.swiper-slide-atc';
 
-  // Visibility threshold for considering a slide "on screen"
-  const VISIBLE_RATIO = 0.6;
-
-  function cacheOrigTabIndex(el) {
-    if (!el || el.nodeType !== 1) return;
-    if (!el.hasAttribute('data-orig-tabindex')) {
-      const orig = el.getAttribute('tabindex');
-      el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
-    }
-  }
-
-  function setTabIndex(el, tabbable) {
-    if (!el || el.nodeType !== 1) return;
-    cacheOrigTabIndex(el);
-
-    if (tabbable) {
-      const orig = el.getAttribute('data-orig-tabindex');
-      if (orig === '') el.removeAttribute('tabindex');
-      else el.setAttribute('tabindex', orig);
-      el.removeAttribute('aria-hidden');
-    } else {
-      el.setAttribute('tabindex', '-1');
-      el.setAttribute('aria-hidden', 'true');
-    }
-  }
-
   function getSlides() {
     return Array.from(SECTION.querySelectorAll(SLIDE_SELECTOR));
   }
 
-  function intersectionRatio(slide) {
+  function isOnScreen(slide) {
     const vp = VIEWPORT.getBoundingClientRect();
     const r = slide.getBoundingClientRect();
-
-    const left = Math.max(vp.left, r.left);
-    const right = Math.min(vp.right, r.right);
-    const overlap = right - left;
-
-    if (overlap <= 0) return 0;
-    const width = Math.max(1, r.width);
-    return overlap / width;
+    return r.right > vp.left && r.left < vp.right;
   }
 
-  function getFirstVisibleSlideIndex(slides) {
-    // Filter to visible slides, then pick the left-most in the viewport
-    let bestIdx = -1;
-    let bestLeft = Infinity;
-
-    slides.forEach((slide, idx) => {
-      const ratio = intersectionRatio(slide);
-      if (ratio < VISIBLE_RATIO) return;
-
-      const left = slide.getBoundingClientRect().left;
-      if (left < bestLeft) {
-        bestLeft = left;
-        bestIdx = idx;
-      }
-    });
-
-    return bestIdx;
+  function getFocusTarget(slide) {
+    if (!slide) return null;
+    if (slide.matches('a')) return slide;
+    return slide.querySelector(ATC_SELECTOR);
   }
 
-  function setSlideWindowTabbable(slides, startIdx) {
-    // Disable all first
-    slides.forEach((slide) => {
-      // If the slide is an <a>, control it directly
-      if (slide.matches('a')) setTabIndex(slide, false);
+  function getActiveSet() {
+    const slides = getSlides().filter(isOnScreen);
 
-      // Control ATC buttons explicitly
-      slide.querySelectorAll(ATC_SELECTOR).forEach(btn => setTabIndex(btn, false));
+    // Sort left → right
+    slides.sort((a, b) =>
+      a.getBoundingClientRect().left - b.getBoundingClientRect().left
+    );
 
-      // Also disable any other focusables inside the slide so they don't steal focus
-      slide.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').forEach(el => {
-        // Skip the slide anchor itself and ATC buttons (already handled)
-        if (el === slide) return;
-        if (el.matches(ATC_SELECTOR)) return;
-        setTabIndex(el, false);
-      });
-    });
-
-    // Enable only the window [startIdx, startIdx + COUNT)
-    for (let i = 0; i < COUNT; i++) {
-      const slide = slides[startIdx + i];
-      if (!slide) break;
-
-      // Slide anchor focus stop
-      if (slide.matches('a')) setTabIndex(slide, true);
-
-      // ATC focus stop
-      slide.querySelectorAll(ATC_SELECTOR).forEach(btn => setTabIndex(btn, true));
-    }
+    return slides.slice(0, COUNT).map(getFocusTarget).filter(Boolean);
   }
 
-  let raf = null;
-  function tick() {
-    const slides = getSlides();
-    if (!slides.length) {
-      raf = requestAnimationFrame(tick);
-      return;
+  function disableAll() {
+    SECTION
+      .querySelectorAll('a, button, [tabindex]')
+      .forEach(el => el.setAttribute('tabindex', '-1'));
+  }
+
+  function enableActive(active) {
+    active.forEach(el => el.removeAttribute('tabindex'));
+  }
+
+  function syncTabState() {
+    const active = getActiveSet();
+    disableAll();
+    enableActive(active);
+    return active;
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+
+    const activeEl = document.activeElement;
+    if (!VIEWPORT.contains(activeEl)) return;
+
+    const active = syncTabState();
+    if (!active.length) return;
+
+    const idx = active.indexOf(activeEl);
+
+    e.preventDefault();
+
+    if (e.shiftKey) {
+      const prev = idx > 0 ? active[idx - 1] : active[active.length - 1];
+      prev.focus({ preventScroll: true });
+    } else {
+      const next = idx < active.length - 1 ? active[idx + 1] : active[0];
+      next.focus({ preventScroll: true });
     }
+  }, true);
 
-    const firstVisibleIdx = getFirstVisibleSlideIndex(slides);
-
-    if (firstVisibleIdx !== -1) {
-      setSlideWindowTabbable(slides, firstVisibleIdx);
-    }
-
+  // Keep state in sync as it scrolls
+  let raf;
+  const tick = () => {
+    syncTabState();
     raf = requestAnimationFrame(tick);
-  }
-
-  // Run continuously because this marquee is animating (IO won't fire reliably on transforms)
+  };
   raf = requestAnimationFrame(tick);
-
-  // If this section is ever removed/replaced
-  window.addEventListener('beforeunload', () => {
-    if (raf) cancelAnimationFrame(raf);
-  });
 })();
 </script>
+
 
 
 
