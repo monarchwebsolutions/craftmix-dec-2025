@@ -796,7 +796,7 @@ For inquiries or permissions, contact daniel@section.store
               <a href="{{ product.url }}" class="product-card-content-link" {% if forloop.index < 5 %}tabindex="-1"{%endif %}>
                 {% unless block.settings.media_style == "none" %}
                   <div class="testimonials-media-{{ section.id }}">
-                      <img class="lazy-img" width=240 height=240 alt="{{ product.featured_image.alt }}" class="scrolling-product-image-mobile" data-src="{{ product.images.last | image_url: width: 300 }}">
+                      <img width=240 height=240 alt="{{ product.featured_image.alt }}" class="lazy-img scrolling-product-image-mobile" data-src="{{ product.images.last | image_url: width: 300 }}">
                   </div>
                 {% endunless %}
                 {% unless hide_content %}
