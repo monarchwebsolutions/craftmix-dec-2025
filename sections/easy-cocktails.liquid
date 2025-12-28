@@ -146,13 +146,15 @@
         slides.forEach((slide, index) => {
           const video = slide.querySelector('video');
           const playBtn = slide.querySelector('.happy-hour_play-btn');
-      
+          const icon = button.querySelector('img');
           const isActive = slide.classList.contains('is-active');
       
           if (video) {
             if (index === videoSlider.index) {
               video.play();
               video.muted = false;
+              icon.src = "https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205";
+              icon.alt = "Unmute Icon";
               if (playBtn) playBtn.style.display = 'none';
             } else {
               video.pause();
