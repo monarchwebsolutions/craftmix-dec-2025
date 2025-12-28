@@ -41,7 +41,7 @@
 .rebuy-cart__flyout .rebuy-product-title-link:focus-visible,
 .rebuy-cart__flyout .rebuy-button:focus-visible,
 .rebuy-cart__flyout .rebuy-select:focus-visible,
-.rebuy-cart__flyout ._8-b._8-0:focus-visible{
+.rebuy-cart__flyout button:focus-visible{
   outline: 3px solid #e10600 !important; /* accessible red */
   outline-offset: 3px;
 }
