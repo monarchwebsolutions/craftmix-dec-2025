@@ -139,14 +139,6 @@ For inquiries or permissions, contact daniel@section.store
 -%}
 
 {%- style -%}
-  .scrolling-products-mobile-container,
-.section-{{ section.id }}-settings {
-  overflow-x: clip;
-}
-.testimonials-slider-{{ section.id }} {
-  overflow: hidden; /* reinforce */
-  max-width: 100%;
-}
 
   {{  heading_font | font_face: font_display: 'swap' }}
   {{  sub_heading_font | font_face: font_display: 'swap' }}
@@ -844,7 +836,9 @@ For inquiries or permissions, contact daniel@section.store
           {% endfor %}
 
         </div>
-        <div class="testimonials-navigation-{{ section.id }}">
+        
+      </div>
+      <div class="testimonials-navigation-{{ section.id }}">
           <button class="testimonials-btn-prev-{{ section.id }}">
             {% if arrow_left != blank %}
               <!-- <img src="{{ arrow_left | image_url }}" alt="{{ arrow_left.alt }}"> -->
@@ -865,7 +859,6 @@ For inquiries or permissions, contact daniel@section.store
             {% endif %}
           </button>
         </div>
-      </div>
     </div>
 </div>
 
