@@ -687,12 +687,20 @@ For inquiries or permissions, contact daniel@section.store
 <script>
 (() => {
   const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
-  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
+  if (!VIEWPORT) return;
+
+  const COUNT = parseInt('{{ count }}', 10) || 0;
+  if (!COUNT) return;
 
   const SLIDE_SELECTOR = '.swiper-slide';
-  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+  const ATC_SELECTOR = '.swiper-slide-atc';
+
+  // Visibility threshold for considering a slide "on screen"
+  const VISIBLE_RATIO = 0.6;
 
   function cacheOrigTabIndex(el) {
+    if (!el || el.nodeType !== 1) return;
     if (!el.hasAttribute('data-orig-tabindex')) {
       const orig = el.getAttribute('tabindex');
       el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
@@ -700,59 +708,114 @@ For inquiries or permissions, contact daniel@section.store
   }
 
   function setTabIndex(el, tabbable) {
+    if (!el || el.nodeType !== 1) return;
     cacheOrigTabIndex(el);
 
     if (tabbable) {
       const orig = el.getAttribute('data-orig-tabindex');
       if (orig === '') el.removeAttribute('tabindex');
       else el.setAttribute('tabindex', orig);
+      el.removeAttribute('aria-hidden');
     } else {
       el.setAttribute('tabindex', '-1');
+      el.setAttribute('aria-hidden', 'true');
     }
   }
 
-  function setSlideTabbable(slide, tabbable) {
-    // IMPORTANT: handle the slide wrapper itself
-    setTabIndex(slide, tabbable);
-
-    // Handle children
-    slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+  function getSlides() {
+    return Array.from(SECTION.querySelectorAll(SLIDE_SELECTOR));
   }
 
-  const io = new IntersectionObserver(
-    (entries) => {
-      entries.forEach(entry => {
-        // Require a decent amount of visibility before allowing tabbing
-        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
-        setSlideTabbable(entry.target, tabbable);
-      });
-    },
-    {
-      root: VIEWPORT,                 // must be the overflow-hidden viewport
-      threshold: [0, 0.6, 1.0],
-      rootMargin: '0px'
-    }
-  );
+  function intersectionRatio(slide) {
+    const vp = VIEWPORT.getBoundingClientRect();
+    const r = slide.getBoundingClientRect();
 
-  // Observe current slides
-  const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
-  slides.forEach(slide => io.observe(slide));
+    const left = Math.max(vp.left, r.left);
+    const right = Math.min(vp.right, r.right);
+    const overlap = right - left;
 
-  // If slides are injected/duplicated later, observe them too
-  const mo = new MutationObserver(() => {
-    SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
-      if (!slide.__ioBound) {
-        slide.__ioBound = true;
-        io.observe(slide);
+    if (overlap <= 0) return 0;
+    const width = Math.max(1, r.width);
+    return overlap / width;
+  }
+
+  function getFirstVisibleSlideIndex(slides) {
+    // Filter to visible slides, then pick the left-most in the viewport
+    let bestIdx = -1;
+    let bestLeft = Infinity;
+
+    slides.forEach((slide, idx) => {
+      const ratio = intersectionRatio(slide);
+      if (ratio < VISIBLE_RATIO) return;
+
+      const left = slide.getBoundingClientRect().left;
+      if (left < bestLeft) {
+        bestLeft = left;
+        bestIdx = idx;
       }
     });
-  });
-  mo.observe(SECTION, { childList: true, subtree: true });
 
-  // Initialize binding marker for existing slides
-  slides.forEach(s => (s.__ioBound = true));
+    return bestIdx;
+  }
+
+  function setSlideWindowTabbable(slides, startIdx) {
+    // Disable all first
+    slides.forEach((slide) => {
+      // If the slide is an <a>, control it directly
+      if (slide.matches('a')) setTabIndex(slide, false);
+
+      // Control ATC buttons explicitly
+      slide.querySelectorAll(ATC_SELECTOR).forEach(btn => setTabIndex(btn, false));
+
+      // Also disable any other focusables inside the slide so they don't steal focus
+      slide.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').forEach(el => {
+        // Skip the slide anchor itself and ATC buttons (already handled)
+        if (el === slide) return;
+        if (el.matches(ATC_SELECTOR)) return;
+        setTabIndex(el, false);
+      });
+    });
+
+    // Enable only the window [startIdx, startIdx + COUNT)
+    for (let i = 0; i < COUNT; i++) {
+      const slide = slides[startIdx + i];
+      if (!slide) break;
+
+      // Slide anchor focus stop
+      if (slide.matches('a')) setTabIndex(slide, true);
+
+      // ATC focus stop
+      slide.querySelectorAll(ATC_SELECTOR).forEach(btn => setTabIndex(btn, true));
+    }
+  }
+
+  let raf = null;
+  function tick() {
+    const slides = getSlides();
+    if (!slides.length) {
+      raf = requestAnimationFrame(tick);
+      return;
+    }
+
+    const firstVisibleIdx = getFirstVisibleSlideIndex(slides);
+
+    if (firstVisibleIdx !== -1) {
+      setSlideWindowTabbable(slides, firstVisibleIdx);
+    }
+
+    raf = requestAnimationFrame(tick);
+  }
+
+  // Run continuously because this marquee is animating (IO won't fire reliably on transforms)
+  raf = requestAnimationFrame(tick);
+
+  // If this section is ever removed/replaced
+  window.addEventListener('beforeunload', () => {
+    if (raf) cancelAnimationFrame(raf);
+  });
 })();
 </script>
+
 
 
 {% schema %}
