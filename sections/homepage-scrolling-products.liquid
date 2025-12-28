@@ -581,7 +581,7 @@ For inquiries or permissions, contact daniel@section.store
               {% else %}
                 {% for product in collections[collection].products limit:collection_show %}
                   {% unless product.tags contains "price_test" %}
-                  <a href="{{ product.url }}" class="products-card-{{ section.id }} data-product-id="{{ product.id }}" swiper-slide">
+                  <a href="{{ product.url }}" class="products-card-{{ section.id }} swiper-slide" data-product-id="{{ product.id }}">
                     <div class="scrolling-product-image products-image-{{ section.id }} {% if product.compare_at_price > product.price and badge != blank %}products-sale-image-{{ section.id }}{% endif %}">
                       {% if badge != blank %}
                         <div class="products-badge-{{ section.id }} scrolling-product-badge">
@@ -687,14 +687,10 @@ For inquiries or permissions, contact daniel@section.store
 <script>
 (() => {
   const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
-  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
-  if (!VIEWPORT) return;
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
 
   const SLIDE_SELECTOR = '.swiper-slide';
-  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-  // How many UNIQUE products you want in the loop
-  const WINDOW = parseInt('{{ count }}', 10) || 0;
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
   function cacheOrigTabIndex(el) {
     if (!el.hasAttribute('data-orig-tabindex')) {
@@ -705,165 +701,58 @@ For inquiries or permissions, contact daniel@section.store
 
   function setTabIndex(el, tabbable) {
     cacheOrigTabIndex(el);
+
     if (tabbable) {
       const orig = el.getAttribute('data-orig-tabindex');
       if (orig === '') el.removeAttribute('tabindex');
       else el.setAttribute('tabindex', orig);
-      el.removeAttribute('aria-hidden');
     } else {
       el.setAttribute('tabindex', '-1');
-      el.setAttribute('aria-hidden', 'true');
     }
   }
 
   function setSlideTabbable(slide, tabbable) {
-    // wrapper
+    // IMPORTANT: handle the slide wrapper itself
     setTabIndex(slide, tabbable);
 
-    // IMPORTANT: also disable anchors/buttons inside (native focusable)
-    slide.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').forEach(el => {
-      setTabIndex(el, tabbable);
-    });
+    // Handle children
+    slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
   }
 
-  function isMostlyVisible(slide) {
-    const vp = VIEWPORT.getBoundingClientRect();
-    const r = slide.getBoundingClientRect();
-
-    // must overlap horizontally with viewport
-    const overlapLeft = Math.max(vp.left, r.left);
-    const overlapRight = Math.min(vp.right, r.right);
-    const overlap = overlapRight - overlapLeft;
-
-    if (overlap <= 0) return false;
-
-    const width = Math.max(1, r.width);
-    const ratio = overlap / width;
-
-    return ratio >= 0.6; // same threshold idea you were using
-  }
-
-  function getProductKey(slide) {
-    // Prefer data-product-id on slide wrapper
-    const pid = slide.getAttribute('data-product-id');
-    if (pid) return pid;
-
-    // fallback: try child button or link
-    const btn = slide.querySelector('[data-product-id]');
-    if (btn) return btn.getAttribute('data-product-id');
-
-    const link = slide.querySelector('a[href]');
-    if (link) return link.getAttribute('href');
-
-    // last resort: DOM position (not ideal)
-    return null;
-  }
-
-  function getActiveSlides() {
-    const slides = Array.from(SECTION.querySelectorAll(SLIDE_SELECTOR));
-
-    // 1) visible candidates in DOM order
-    const visible = slides.filter(isMostlyVisible);
-
-    // 2) dedupe by product id (keeps the “first visible copy” of each product)
-    const seen = new Set();
-    const unique = [];
-    for (const s of visible) {
-      const key = getProductKey(s);
-      if (!key) continue;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      unique.push(s);
-      if (WINDOW && unique.length >= WINDOW) break;
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(entry => {
+        // Require a decent amount of visibility before allowing tabbing
+        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        setSlideTabbable(entry.target, tabbable);
+      });
+    },
+    {
+      root: VIEWPORT,                 // must be the overflow-hidden viewport
+      threshold: [0, 0.6, 1.0],
+      rootMargin: '0px'
     }
+  );
 
-    return unique;
-  }
+  // Observe current slides
+  const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
+  slides.forEach(slide => io.observe(slide));
 
-  function enforceTabbableWindow() {
-    const slides = Array.from(SECTION.querySelectorAll(SLIDE_SELECTOR));
-    const active = getActiveSlides();
-    const activeSet = new Set(active);
-
-    slides.forEach(s => setSlideTabbable(s, activeSet.has(s)));
-    return active;
-  }
-
-  function getFocusTarget(slide) {
-    // You said you added this class to buttons
-    const preferred =
-      slide.querySelector('.swiper-slide-atc') ||
-      slide.querySelector('button:not([disabled])') ||
-      slide.querySelector('a[href]') ||
-      slide.querySelector(FOCUSABLE);
-
-    return preferred || slide;
-  }
-
-  function getActiveIndex(active) {
-    const a = document.activeElement;
-    if (!a) return -1;
-    const slide = a.closest(SLIDE_SELECTOR);
-    if (!slide) return -1;
-    return active.indexOf(slide);
-  }
-
-  // Wrap tab behavior inside this marquee only
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Tab') return;
-
-    const activeEl = document.activeElement;
-    if (!activeEl || !VIEWPORT.contains(activeEl)) return;
-
-    // lock window before deciding next
-    const active = enforceTabbableWindow();
-    if (!active.length) return;
-
-    const dir = e.shiftKey ? -1 : 1;
-    let idx = getActiveIndex(active);
-
-    // if focus is inside viewport but not in a slide, start at first/last
-    if (idx === -1) idx = dir === 1 ? -1 : 0;
-
-    let next = idx + dir;
-    if (next >= active.length) next = 0;
-    if (next < 0) next = active.length - 1;
-
-    const target = getFocusTarget(active[next]);
-    if (!target) return;
-
-    e.preventDefault();
-    target.focus({ preventScroll: true });
-  }, true);
-
-  // Keep window correct as things animate
-  let raf = null;
-  function startRaf() {
-    if (raf) return;
-    const tick = () => {
-      enforceTabbableWindow();
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-  }
-  function stopRaf() {
-    if (!raf) return;
-    cancelAnimationFrame(raf);
-    raf = null;
-  }
-
-  VIEWPORT.addEventListener('focusin', startRaf);
-  VIEWPORT.addEventListener('focusout', () => {
-    setTimeout(() => {
-      if (!VIEWPORT.contains(document.activeElement)) stopRaf();
-    }, 0);
+  // If slides are injected/duplicated later, observe them too
+  const mo = new MutationObserver(() => {
+    SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
+      if (!slide.__ioBound) {
+        slide.__ioBound = true;
+        io.observe(slide);
+      }
+    });
   });
+  mo.observe(SECTION, { childList: true, subtree: true });
 
-  // initial
-  enforceTabbableWindow();
+  // Initialize binding marker for existing slides
+  slides.forEach(s => (s.__ioBound = true));
 })();
 </script>
-
 
 
 {% schema %}
