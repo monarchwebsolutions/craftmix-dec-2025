@@ -679,43 +679,74 @@ For inquiries or permissions, contact daniel@section.store
 </div>
 <script>
 (() => {
-  const SLIDE_SELECTOR = '.swiper-slide';
-  const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]';
+  const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
 
-  const observer = new IntersectionObserver(
+  const SLIDE_SELECTOR = '.swiper-slide';
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+
+  function cacheOrigTabIndex(el) {
+    if (!el.hasAttribute('data-orig-tabindex')) {
+      const orig = el.getAttribute('tabindex');
+      el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
+    }
+  }
+
+  function setTabIndex(el, tabbable) {
+    cacheOrigTabIndex(el);
+
+    if (tabbable) {
+      const orig = el.getAttribute('data-orig-tabindex');
+      if (orig === '') el.removeAttribute('tabindex');
+      else el.setAttribute('tabindex', orig);
+    } else {
+      el.setAttribute('tabindex', '-1');
+    }
+  }
+
+  function setSlideTabbable(slide, tabbable) {
+    // IMPORTANT: handle the slide wrapper itself
+    setTabIndex(slide, tabbable);
+
+    // Handle children
+    slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+  }
+
+  const io = new IntersectionObserver(
     (entries) => {
       entries.forEach(entry => {
-        const slide = entry.target;
-        const tabbable = entry.isIntersecting && entry.intersectionRatio > 0.4;
-
-        slide.querySelectorAll(FOCUSABLE_SELECTOR).forEach(el => {
-          // store original tabindex once
-          if (!el.hasAttribute('data-orig-tabindex')) {
-            const orig = el.getAttribute('tabindex');
-            el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
-          }
-
-          if (tabbable) {
-            const orig = el.getAttribute('data-orig-tabindex');
-            if (orig === '') el.removeAttribute('tabindex');
-            else el.setAttribute('tabindex', orig);
-          } else {
-            el.setAttribute('tabindex', '-1');
-          }
-        });
+        // Require a decent amount of visibility before allowing tabbing
+        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        setSlideTabbable(entry.target, tabbable);
       });
     },
     {
-      root: document.querySelector('.marquee-horizontal-{{ section.id }}'),
-      threshold: 0.4 // must be ~40% visible to be tabbable
+      root: VIEWPORT,                 // must be the overflow-hidden viewport
+      threshold: [0, 0.6, 1.0],
+      rootMargin: '0px'
     }
   );
 
-  document.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
-    observer.observe(slide);
+  // Observe current slides
+  const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
+  slides.forEach(slide => io.observe(slide));
+
+  // If slides are injected/duplicated later, observe them too
+  const mo = new MutationObserver(() => {
+    SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
+      if (!slide.__ioBound) {
+        slide.__ioBound = true;
+        io.observe(slide);
+      }
+    });
   });
+  mo.observe(SECTION, { childList: true, subtree: true });
+
+  // Initialize binding marker for existing slides
+  slides.forEach(s => (s.__ioBound = true));
 })();
 </script>
+
 
 {% schema %}
   {
