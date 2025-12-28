@@ -680,84 +680,84 @@ For inquiries or permissions, contact daniel@section.store
 <script>
   // Stop focus on off screen items
   (() => {
-  const section = document.currentScript?.closest('.hp-scrolling-products-container') || document;
-  const marquee = section.querySelector('.marquee-horizontal-{{ section.id }}');
-  if (!marquee) return;
+    const section = document.currentScript?.closest('.hp-scrolling-products-container') || document;
+    const marquee = section.querySelector('.marquee-horizontal-{{ section.id }}');
+    if (!marquee) return;
 
-  const FOCUSABLE = [
-    'a[href]',
-    'button:not([disabled])',
-    'input:not([disabled]):not([type="hidden"])',
-    'select:not([disabled])',
-    'textarea:not([disabled])',
-    '[tabindex]'
-  ].join(',');
+    const FOCUSABLE = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled]):not([type="hidden"])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]'
+    ].join(',');
 
-  function overlapRatio(el, viewport) {
-    const vr = viewport.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
+    function overlapRatio(el, viewport) {
+      const vr = viewport.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
 
-    const left = Math.max(r.left, vr.left);
-    const right = Math.min(r.right, vr.right);
-    const overlap = Math.max(0, right - left);
-    return overlap / Math.max(1, r.width);
-  }
-
-  function setTabbable(el, tabbable) {
-    if (!el) return;
-
-    // cache original tabindex once
-    if (!el.hasAttribute('data-orig-tabindex')) {
-      const orig = el.getAttribute('tabindex');
-      el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
+      const left = Math.max(r.left, vr.left);
+      const right = Math.min(r.right, vr.right);
+      const overlap = Math.max(0, right - left);
+      return overlap / Math.max(1, r.width);
     }
 
-    if (tabbable) {
-      const orig = el.getAttribute('data-orig-tabindex');
-      if (orig === '') el.removeAttribute('tabindex');
-      else el.setAttribute('tabindex', orig);
-      el.removeAttribute('aria-hidden');
-    } else {
-      el.setAttribute('tabindex', '-1');
-    }
-  }
+    function setTabbable(el, tabbable) {
+      if (!el) return;
 
-  function sync() {
-    // Optional hard rule: duplicates never tabbable
-    marquee.querySelectorAll('[data-duplicate="true"]').forEach(track => {
-      track.querySelectorAll(FOCUSABLE).forEach(el => {
+      // cache original tabindex once
+      if (!el.hasAttribute('data-orig-tabindex')) {
+        const orig = el.getAttribute('tabindex');
+        el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
+      }
+
+      if (tabbable) {
+        const orig = el.getAttribute('data-orig-tabindex');
+        if (orig === '') el.removeAttribute('tabindex');
+        else el.setAttribute('tabindex', orig);
+        el.removeAttribute('aria-hidden');
+      } else {
         el.setAttribute('tabindex', '-1');
-      });
-    });
-
-    // For ALL cards, only allow tabbable if mostly visible in marquee viewport
-    marquee.querySelectorAll('.products-card-{{ section.id }}').forEach(card => {
-      const visible = overlapRatio(card, marquee) >= 0.5; // 50% visible threshold
-      card.querySelectorAll(FOCUSABLE).forEach(el => setTabbable(el, visible));
-    });
-  }
-
-  // Run now and keep it updated as the marquee animates
-  sync();
-
-  // Because your marquee moves via CSS animation, there is no scroll event.
-  // So we poll cheaply using rAF while the section exists.
-  let rafId;
-  const loop = () => {
-    sync();
-    rafId = requestAnimationFrame(loop);
-  };
-  rafId = requestAnimationFrame(loop);
-
-  // Safety: stop if section is removed
-  const mo = new MutationObserver(() => {
-    if (!document.body.contains(marquee)) {
-      cancelAnimationFrame(rafId);
-      mo.disconnect();
+      }
     }
-  });
-  mo.observe(document.body, { childList: true, subtree: true });
-})();
+
+    function sync() {
+      // Optional hard rule: duplicates never tabbable
+      marquee.querySelectorAll('[data-duplicate="true"]').forEach(track => {
+        track.querySelectorAll(FOCUSABLE).forEach(el => {
+          el.setAttribute('tabindex', '-1');
+        });
+      });
+
+      // For ALL cards, only allow tabbable if mostly visible in marquee viewport
+      marquee.querySelectorAll('.products-card-{{ section.id }}').forEach(card => {
+        const visible = overlapRatio(card, marquee) >= 0.5; // 50% visible threshold
+        card.querySelectorAll(FOCUSABLE).forEach(el => setTabbable(el, visible));
+      });
+    }
+
+    // Run now and keep it updated as the marquee animates
+    sync();
+
+    // Because your marquee moves via CSS animation, there is no scroll event.
+    // So we poll cheaply using rAF while the section exists.
+    let rafId;
+    const loop = () => {
+      sync();
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+
+    // Safety: stop if section is removed
+    const mo = new MutationObserver(() => {
+      if (!document.body.contains(marquee)) {
+        cancelAnimationFrame(rafId);
+        mo.disconnect();
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  })();
 
 </script>
 {% schema %}
