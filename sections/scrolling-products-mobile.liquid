@@ -793,12 +793,6 @@ For inquiries or permissions, contact daniel@section.store
             {% unless product.tags contains "price_test" %}
             <div class="testimonials-slide-{{ section.id }} swiper-slide">
               <div class="scrolling-product-badge">12 pack</div>
-              <form method="post" action="/cart/add">
-                <input type="hidden" name="id" value="{{ product.variants.first.id }}">
-                <button type="submit" class="scrolling-product-atc-btn" data-product-id="{{product.id }}">
-                  Add - {{ product.price | money }}
-                </button>
-              </form>
               <a href="{{ product.url }}" class="product-card-content-link">
                 {% unless block.settings.media_style == "none" %}
                   <div class="testimonials-media-{{ section.id }}">
@@ -831,6 +825,12 @@ For inquiries or permissions, contact daniel@section.store
                   </div>
                 {% endunless %}
               </a>
+              <form method="post" action="/cart/add">
+                <input type="hidden" name="id" value="{{ product.variants.first.id }}">
+                <button type="submit" class="scrolling-product-atc-btn" data-product-id="{{product.id }}">
+                  Add - {{ product.price | money }}
+                </button>
+              </form>
             </div>
             {% endunless %}
           {% endfor %}
