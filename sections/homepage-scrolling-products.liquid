@@ -687,14 +687,22 @@ For inquiries or permissions, contact daniel@section.store
       </div>
     </div>
 </div>
-{% comment %} <script>
-// Only focus on visible elements
+<script>
+// Only apply keyboard focus logic on desktop (1024px+)
 (() => {
-  const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
-  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
+  const DESKTOP_MQ = window.matchMedia('(min-width: 1024px)');
+
+  // Exit immediately on mobile/tablet
+  if (!DESKTOP_MQ.matches) return;
+
+  const SECTION =
+    document.currentScript?.closest('.hp-scrolling-products-container') || document;
+  const VIEWPORT =
+    SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
 
   const SLIDE_SELECTOR = '.swiper-slide';
-  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+  const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
   function cacheOrigTabIndex(el) {
     if (!el.hasAttribute('data-orig-tabindex')) {
@@ -716,33 +724,29 @@ For inquiries or permissions, contact daniel@section.store
   }
 
   function setSlideTabbable(slide, tabbable) {
-    // IMPORTANT: handle the slide wrapper itself
-    setTabIndex(slide, tabbable);
-
-    // Handle children
-    slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+    slide.querySelectorAll(FOCUSABLE).forEach(el =>
+      setTabIndex(el, tabbable)
+    );
   }
 
   const io = new IntersectionObserver(
-    (entries) => {
+    entries => {
       entries.forEach(entry => {
-        // Require a decent amount of visibility before allowing tabbing
-        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        const tabbable =
+          entry.isIntersecting && entry.intersectionRatio >= 0.6;
         setSlideTabbable(entry.target, tabbable);
       });
     },
     {
-      root: VIEWPORT,                 // must be the overflow-hidden viewport
-      threshold: [0, 0.6, 1.0],
+      root: VIEWPORT,
+      threshold: [0, 0.6, 1],
       rootMargin: '0px'
     }
   );
 
-  // Observe current slides
   const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
   slides.forEach(slide => io.observe(slide));
 
-  // If slides are injected/duplicated later, observe them too
   const mo = new MutationObserver(() => {
     SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
       if (!slide.__ioBound) {
@@ -751,12 +755,12 @@ For inquiries or permissions, contact daniel@section.store
       }
     });
   });
-  mo.observe(SECTION, { childList: true, subtree: true });
 
-  // Initialize binding marker for existing slides
+  mo.observe(SECTION, { childList: true, subtree: true });
   slides.forEach(s => (s.__ioBound = true));
 })();
-</script> {% endcomment %}
+</script>
+
 
 
 {% schema %}
