@@ -330,6 +330,9 @@ For inquiries or permissions, contact daniel@section.store
     -ms-flex-align: center;
     align-items: center;
   }
+  .marquee-horizontal-{{ section.id }}:focus-within .track-horizontal-{{ section.id }} {
+    animation-play-state: paused;
+  }
 
   .track-horizontal-{{section.id}} {
       padding-left: {{ scrolling_gap_mobile }}px;
