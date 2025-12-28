@@ -904,184 +904,175 @@ For inquiries or permissions, contact daniel@section.store
       }
     });
 
-    /*
-      =========================
-      A11Y: Loop duplicates + focus entry
-      - Never allow focus on loop duplicate slides
-      - If focus lands in a duplicate, jump to first real slide (index 0) and focus its first tabbable control
-      - Keep pagination/prev/next unaffected
-      =========================
-    */
-    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
-
-    function cacheOrigTabIndex(el) {
-      if (!el.hasAttribute('data-orig-tabindex')) {
-        const orig = el.getAttribute('tabindex');
-        el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
-      }
+    // Helpers
+    function pauseAutoplay() {
+      try {
+        if (slider && slider.autoplay && slider.autoplay.running) slider.autoplay.stop();
+      } catch (e) {}
     }
 
-    function setTabIndex(el, tabbable) {
-      cacheOrigTabIndex(el);
-
-      if (tabbable) {
-        const orig = el.getAttribute('data-orig-tabindex');
-        if (orig === '') el.removeAttribute('tabindex');
-        else el.setAttribute('tabindex', orig);
-        el.removeAttribute('aria-hidden');
-      } else {
-        el.setAttribute('tabindex', '-1');
-        el.setAttribute('aria-hidden', 'true');
-      }
+    function resumeAutoplay() {
+      try {
+        if (slider && slider.autoplay && !slider.autoplay.running) slider.autoplay.start();
+      } catch (e) {}
     }
 
-    function setTabbableWithinSlide(slideEl, tabbable) {
-      slideEl.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
-    }
+    function snapFocusFromDuplicateToReal(target) {
+      const slideEl = target.closest('.swiper-slide');
+      if (!slideEl) return false;
 
-    function isDuplicateSlide(slideEl) {
-      // Swiper loop duplicates use this class
-      return slideEl.classList.contains('swiper-slide-duplicate');
-    }
+      if (!slideEl.classList.contains('swiper-slide-duplicate')) return false;
 
-    function refreshLoopTabbing() {
-      slider.slides.forEach(slideEl => {
-        // Only kill focus inside duplicate slides.
-        // Real slides remain tabbable (including the real last 3).
-        setTabbableWithinSlide(slideEl, !isDuplicateSlide(slideEl));
-      });
-    }
+      // data-swiper-slide-index is the "real" index for loop duplicates
+      const realIndexAttr = slideEl.getAttribute('data-swiper-slide-index');
+      if (realIndexAttr == null) return false;
 
-    function focusFirstControlInActiveSlide() {
-      const active = sliderEl.querySelector('.swiper-slide-active');
-      if (!active) return;
+      const realIndex = parseInt(realIndexAttr, 10);
+      if (Number.isNaN(realIndex)) return false;
 
-      // Prefer your product link, then ATC button, then any focusable
-      const preferred =
-        active.querySelector('.product-card-content-link:not([tabindex="-1"])') ||
-        active.querySelector('.scrolling-product-atc-btn:not([tabindex="-1"])') ||
-        active.querySelector('a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])');
+      // Jump to the real slide instantly
+      slider.slideToLoop(realIndex, 0);
 
-      if (preferred) preferred.focus({ preventScroll: true });
-    }
-
-    // Initial pass (after Swiper builds loop clones)
-    refreshLoopTabbing();
-
-    // Keep it correct if Swiper rebuilds/fixes loop
-    slider.on('init', refreshLoopTabbing);
-    slider.on('loopFix', refreshLoopTabbing);
-    slider.on('slideChangeTransitionEnd', refreshLoopTabbing);
-
-    // If focus enters a duplicate slide, snap to the first real slide and focus the real content
-    sliderEl.addEventListener('focusin', (e) => {
-      const dup = e.target.closest('.swiper-slide-duplicate');
-      if (!dup) return;
-
-      // Jump to first real slide instantly
-      slider.slideToLoop(0, 0);
-
-      // Focus the active (real) slide content after Swiper snaps
+      // After Swiper updates, move focus to the matching element in the real active slide
       requestAnimationFrame(() => {
-        focusFirstControlInActiveSlide();
+        const active = sliderEl.querySelector('.swiper-slide-active');
+        if (!active) return;
+
+        const isATC = !!target.closest('.scrolling-product-atc-btn');
+        const focusTarget = isATC
+          ? active.querySelector('.scrolling-product-atc-btn')
+          : active.querySelector('a.product-card-content-link, a[href]');
+
+        if (focusTarget) focusTarget.focus({ preventScroll: true });
       });
+
+      return true;
+    }
+
+    function syncActiveSlideToFocusedElement(target) {
+      const slideEl = target.closest('.swiper-slide');
+      if (!slideEl) return;
+
+      // Ignore duplicates here; duplicates are handled by snapFocusFromDuplicateToReal
+      if (slideEl.classList.contains('swiper-slide-duplicate')) return;
+
+      const realIndexAttr = slideEl.getAttribute('data-swiper-slide-index');
+      if (realIndexAttr != null) {
+        const realIndex = parseInt(realIndexAttr, 10);
+        if (!Number.isNaN(realIndex) && realIndex !== slider.realIndex) {
+          slider.slideToLoop(realIndex, 0);
+        }
+        return;
+      }
+
+      // Fallback: slideTo by physical index if data attr isn't present
+      const idx = slider.slides.indexOf(slideEl);
+      if (idx >= 0 && idx !== slider.activeIndex) {
+        slider.slideTo(idx, 0);
+      }
+    }
+
+    // Keep pagination / active state in sync with keyboard focus
+    sliderEl.addEventListener('focusin', (e) => {
+      const t = e.target;
+
+      // Stop autoplay while user is interacting via keyboard
+      pauseAutoplay();
+
+      // If focus lands in a duplicate slide, snap to the corresponding real slide and refocus
+      if (snapFocusFromDuplicateToReal(t)) return;
+
+      // Otherwise, ensure the slide containing focus becomes active so pagination updates
+      syncActiveSlideToFocusedElement(t);
     });
 
-    /*
-      =========================
-      Your existing slideChange logic (fixed: classList.contains selector bug)
-      =========================
-    */
+    // Optional: resume autoplay when focus leaves the whole slider
+    sliderEl.addEventListener('focusout', (e) => {
+      // If focus is still inside the slider, do nothing
+      if (sliderEl.contains(e.relatedTarget)) return;
+      resumeAutoplay();
+    });
+
+    // Your existing slideChange handler (fixed selector logic)
     slider.on('slideChange', function () {
       const allSlides = slider.slides;
 
-      allSlides.forEach(function(slideEl) {
-        // FIX: classList.contains should not include a dot
-        if (!slideEl.classList.contains('swiper-slide-active')) {
-          let video = slideEl.querySelector('video');
-          let frame = slideEl.querySelector('iframe');
-          let btn = slideEl.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
-          if (video) {
+      allSlides.forEach(function(slide) {
+        // NOTE: classList.contains expects class name without dot
+        if(!slide.classList.contains('swiper-slide-active')) {
+          let video = slide.querySelector('video');
+          let frame = slide.querySelector('iframe');
+          let btn = slide.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
+          if(video) {
             video.pause();
           }
-          if (frame) {
+          if(frame) {
             frame.src = frame.src.replace('&autoplay=1', '');
           }
-          if (btn) {
+          if(btn) {
             btn.classList.remove('active');
           }
         }
       });
-
-      // Keep loop tabbing in sync after changes
-      refreshLoopTabbing();
     });
 
-    /*
-      =========================
-      Your existing video click handling
-      (scope limited to this section)
-      =========================
-    */
-    let slides = sliderEl.querySelectorAll('.testimonials-slide-{{ section.id }}');
-    if (slides) {
+    // Your existing video click wiring
+    let slides = document.querySelectorAll('.testimonials-slide-{{ section.id }}');
+    if(slides) {
       slides.forEach(el => {
         let btn = el.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
         let videoWrapper = el.querySelector('.testimonials-video-poster-{{ section.id }}');
         let video = el.querySelector('video');
         let frame = el.querySelector('iframe');
 
-        if (btn) {
+        if(btn) {
           btn.addEventListener('click', () => {
             btn.classList.add('active');
-            if (videoWrapper) {
-              videoWrapper.classList.add('active');
+            if(videoWrapper) {
+              videoWrapper.classList.add('active'); 
             }
-            if (video) {
-              video.play();
+            if(video) {
+             video.play();
             }
-            if (frame) {
+            if(frame) {
               frame.src += "&autoplay=1";
             }
-          });
+          })
         }
 
-        if (videoWrapper) {
+        if(videoWrapper) {
           videoWrapper.addEventListener('click', () => {
-            if (video) {
-              video.pause();
+            if(video) {
+             video.pause();
             }
-            if (frame) {
+            if(frame) {
               frame.src = frame.src.replace(/&autoplay=0/g, '');
               frame.src = frame.src.replace(/&autoplay=1/g, '');
             }
-            if (btn) {
+            if(btn) {
               btn.classList.remove('active');
             }
-          });
+          })
         }
-      });
+      })
     }
 
-    /*
-      =========================
-      LazyLoad init (your existing)
-      =========================
-    */
+    // LazyLoad init (as you had it)
     var lazyLoadInstance = new LazyLoad();
 
-    window.addEventListener("LazyLoad::Initialized", function (event) {
+    window.addEventListener("LazyLoad::Initialized",function (event) {
       window.lazyLoadInstance = event.detail.instance;
-    }, false);
+    },false );
   }
 
   document.addEventListener('DOMContentLoaded', initTestimonials12);
 
   if (Shopify.designMode) {
-    document.addEventListener('shopify:section:unload', initTestimonials12);
-    document.addEventListener('shopify:section:load', initTestimonials12);
+     document.addEventListener('shopify:section:unload', initTestimonials12);
+     document.addEventListener('shopify:section:load', initTestimonials12);
   }
 </script>
+
 
 
 {% schema %}
