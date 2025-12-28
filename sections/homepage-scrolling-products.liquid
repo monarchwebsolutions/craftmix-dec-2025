@@ -688,6 +688,7 @@ For inquiries or permissions, contact daniel@section.store
     </div>
 </div>
 <script>
+// Only focus on visible elements
 (() => {
   const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
   const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
