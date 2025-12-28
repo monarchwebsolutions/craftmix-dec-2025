@@ -862,12 +862,13 @@ For inquiries or permissions, contact daniel@section.store
     </div>
 </div>
 
-
-
-
 <script>
   function initTestimonials12() {
-    document.querySelector('.testimonials-slider-{{ section.id }}').classList.remove('preview');
+    const sliderEl = document.querySelector('.testimonials-slider-{{ section.id }}');
+    if (!sliderEl) return;
+
+    sliderEl.classList.remove('preview');
+
     const slider = new Swiper(".testimonials-slider-{{ section.id }}", {
       speed: 300,
       spaceBetween: 20,
@@ -903,82 +904,185 @@ For inquiries or permissions, contact daniel@section.store
       }
     });
 
-    slider.on('slideChange', function () {
+    /*
+      =========================
+      A11Y: Loop duplicates + focus entry
+      - Never allow focus on loop duplicate slides
+      - If focus lands in a duplicate, jump to first real slide (index 0) and focus its first tabbable control
+      - Keep pagination/prev/next unaffected
+      =========================
+    */
+    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
+    function cacheOrigTabIndex(el) {
+      if (!el.hasAttribute('data-orig-tabindex')) {
+        const orig = el.getAttribute('tabindex');
+        el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
+      }
+    }
+
+    function setTabIndex(el, tabbable) {
+      cacheOrigTabIndex(el);
+
+      if (tabbable) {
+        const orig = el.getAttribute('data-orig-tabindex');
+        if (orig === '') el.removeAttribute('tabindex');
+        else el.setAttribute('tabindex', orig);
+        el.removeAttribute('aria-hidden');
+      } else {
+        el.setAttribute('tabindex', '-1');
+        el.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function setTabbableWithinSlide(slideEl, tabbable) {
+      slideEl.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+    }
+
+    function isDuplicateSlide(slideEl) {
+      // Swiper loop duplicates use this class
+      return slideEl.classList.contains('swiper-slide-duplicate');
+    }
+
+    function refreshLoopTabbing() {
+      slider.slides.forEach(slideEl => {
+        // Only kill focus inside duplicate slides.
+        // Real slides remain tabbable (including the real last 3).
+        setTabbableWithinSlide(slideEl, !isDuplicateSlide(slideEl));
+      });
+    }
+
+    function focusFirstControlInActiveSlide() {
+      const active = sliderEl.querySelector('.swiper-slide-active');
+      if (!active) return;
+
+      // Prefer your product link, then ATC button, then any focusable
+      const preferred =
+        active.querySelector('.product-card-content-link:not([tabindex="-1"])') ||
+        active.querySelector('.scrolling-product-atc-btn:not([tabindex="-1"])') ||
+        active.querySelector('a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])');
+
+      if (preferred) preferred.focus({ preventScroll: true });
+    }
+
+    // Initial pass (after Swiper builds loop clones)
+    refreshLoopTabbing();
+
+    // Keep it correct if Swiper rebuilds/fixes loop
+    slider.on('init', refreshLoopTabbing);
+    slider.on('loopFix', refreshLoopTabbing);
+    slider.on('slideChangeTransitionEnd', refreshLoopTabbing);
+
+    // If focus enters a duplicate slide, snap to the first real slide and focus the real content
+    sliderEl.addEventListener('focusin', (e) => {
+      const dup = e.target.closest('.swiper-slide-duplicate');
+      if (!dup) return;
+
+      // Jump to first real slide instantly
+      slider.slideToLoop(0, 0);
+
+      // Focus the active (real) slide content after Swiper snaps
+      requestAnimationFrame(() => {
+        focusFirstControlInActiveSlide();
+      });
+    });
+
+    /*
+      =========================
+      Your existing slideChange logic (fixed: classList.contains selector bug)
+      =========================
+    */
+    slider.on('slideChange', function () {
       const allSlides = slider.slides;
 
-      allSlides.forEach(function(slide) {
-        if(!slide.classList.contains('.swiper-slide-active')) {
-          let video = slide.querySelector('video');
-          let frame = slide.querySelector('iframe');
-          let btn = slide.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
-          if(video) {
+      allSlides.forEach(function(slideEl) {
+        // FIX: classList.contains should not include a dot
+        if (!slideEl.classList.contains('swiper-slide-active')) {
+          let video = slideEl.querySelector('video');
+          let frame = slideEl.querySelector('iframe');
+          let btn = slideEl.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
+          if (video) {
             video.pause();
           }
-          if(frame) {
+          if (frame) {
             frame.src = frame.src.replace('&autoplay=1', '');
           }
-          if(btn) {
+          if (btn) {
             btn.classList.remove('active');
           }
         }
       });
+
+      // Keep loop tabbing in sync after changes
+      refreshLoopTabbing();
     });
 
-    let slides = document.querySelectorAll('.testimonials-slide-{{ section.id }}');
-    if(slides) {
+    /*
+      =========================
+      Your existing video click handling
+      (scope limited to this section)
+      =========================
+    */
+    let slides = sliderEl.querySelectorAll('.testimonials-slide-{{ section.id }}');
+    if (slides) {
       slides.forEach(el => {
         let btn = el.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
         let videoWrapper = el.querySelector('.testimonials-video-poster-{{ section.id }}');
         let video = el.querySelector('video');
         let frame = el.querySelector('iframe');
 
-        if(btn) {
+        if (btn) {
           btn.addEventListener('click', () => {
             btn.classList.add('active');
-            if(videoWrapper) {
-              videoWrapper.classList.add('active'); 
+            if (videoWrapper) {
+              videoWrapper.classList.add('active');
             }
-            if(video) {
-             video.play();
+            if (video) {
+              video.play();
             }
-            if(frame) {
+            if (frame) {
               frame.src += "&autoplay=1";
             }
-          })
+          });
         }
 
-        if(videoWrapper) {
+        if (videoWrapper) {
           videoWrapper.addEventListener('click', () => {
-            if(video) {
-             video.pause();
+            if (video) {
+              video.pause();
             }
-            if(frame) {
+            if (frame) {
               frame.src = frame.src.replace(/&autoplay=0/g, '');
               frame.src = frame.src.replace(/&autoplay=1/g, '');
             }
-            if(btn) {
+            if (btn) {
               btn.classList.remove('active');
             }
-          })
+          });
         }
-      })
+      });
     }
 
+    /*
+      =========================
+      LazyLoad init (your existing)
+      =========================
+    */
     var lazyLoadInstance = new LazyLoad();
 
-    window.addEventListener("LazyLoad::Initialized",function (event) {
+    window.addEventListener("LazyLoad::Initialized", function (event) {
       window.lazyLoadInstance = event.detail.instance;
-    },false );
+    }, false);
   }
 
   document.addEventListener('DOMContentLoaded', initTestimonials12);
-  
+
   if (Shopify.designMode) {
-     document.addEventListener('shopify:section:unload', initTestimonials12);
-     document.addEventListener('shopify:section:load', initTestimonials12);
+    document.addEventListener('shopify:section:unload', initTestimonials12);
+    document.addEventListener('shopify:section:load', initTestimonials12);
   }
 </script>
+
 
 {% schema %}
   {
