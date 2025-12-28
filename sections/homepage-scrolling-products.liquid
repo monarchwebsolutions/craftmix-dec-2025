@@ -677,7 +677,15 @@ For inquiries or permissions, contact daniel@section.store
       </div>
     </div>
 </div>
-
+<script>
+  // Stop focus on off screen items
+  document.querySelectorAll('[data-duplicate="true"]').forEach(track => {
+    track.querySelectorAll('a, button, input, select, textarea, [tabindex]').forEach(el => {
+      el.setAttribute('tabindex', '-1');
+      el.setAttribute('aria-hidden', 'true');
+    });
+  });
+</script>
 {% schema %}
   {
     "name": "HP Scrolling Products",
