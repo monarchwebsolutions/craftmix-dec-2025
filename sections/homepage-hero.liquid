@@ -18,8 +18,8 @@
       <div class="hero-tool-tip tool-tip">
         {% assign tool_tip_product = all_products[settings.hero_tool_tip_product] %}
         <div class="tool-tip-left">
-          <a href="{{ tool_tip_product.url }}">
-            <img fetchpriority="high" class="tool-tip-image" width="86" height="86" src="/cdn/shop/{{ tool_tip_product.featured_image.src | replace: '.png', '_200x.png' }}" alt="{{ tool_tip_product.title }}">
+          <a href="{{ tool_tip_product.url }}" tabindex="-1">
+            <img fetchpriority="high" tabindex="0" class="tool-tip-image" width="86" height="86" src="/cdn/shop/{{ tool_tip_product.featured_image.src | replace: '.png', '_200x.png' }}" alt="{{ tool_tip_product.title }}">
           </a>
         </div>
         <div class="tool-tip-right">
