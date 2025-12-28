@@ -537,7 +537,7 @@ For inquiries or permissions, contact daniel@section.store
     {% endunless %}
   {% endfor %}
 {% endif %}
-<div class="hp-scrolling-products-container section-{{ section.id }} products-{{ section.id }}" style="background-color:{{ background_color }}; background-image: {{ background_gradient }};">
+<div class="hp-scrolling-products-container section-{{ section.id }} products-{{ section.id }}" data-slide-window="{{ count }}" style="background-color:{{ background_color }}; background-image: {{ background_gradient }};">
     <div class="section-{{ section.id }}-settings">
       {% if heading != blank %}
         <div class="products-heading-{{ section.id }}">{{ heading }}</div>
