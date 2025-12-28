@@ -686,95 +686,73 @@ For inquiries or permissions, contact daniel@section.store
 </div>
 <script>
 (() => {
-  const SECTION = document.currentScript.closest('.hp-scrolling-products-container');
-  if (!SECTION) return;
-
-  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
-  if (!VIEWPORT) return;
-
-  const COUNT = parseInt('{{ count }}', 10);
-  if (!COUNT) return;
+  const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
 
   const SLIDE_SELECTOR = '.swiper-slide';
-  const ATC_SELECTOR = '.swiper-slide-atc';
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
-  function getSlides() {
-    return Array.from(SECTION.querySelectorAll(SLIDE_SELECTOR));
-  }
-
-  function isOnScreen(slide) {
-    const vp = VIEWPORT.getBoundingClientRect();
-    const r = slide.getBoundingClientRect();
-    return r.right > vp.left && r.left < vp.right;
-  }
-
-  function getFocusTarget(slide) {
-    if (!slide) return null;
-    if (slide.matches('a')) return slide;
-    return slide.querySelector(ATC_SELECTOR);
-  }
-
-  function getActiveSet() {
-    const slides = getSlides().filter(isOnScreen);
-
-    // Sort left → right
-    slides.sort((a, b) =>
-      a.getBoundingClientRect().left - b.getBoundingClientRect().left
-    );
-
-    return slides.slice(0, COUNT).map(getFocusTarget).filter(Boolean);
-  }
-
-  function disableAll() {
-    SECTION
-      .querySelectorAll('a, button, [tabindex]')
-      .forEach(el => el.setAttribute('tabindex', '-1'));
-  }
-
-  function enableActive(active) {
-    active.forEach(el => el.removeAttribute('tabindex'));
-  }
-
-  function syncTabState() {
-    const active = getActiveSet();
-    disableAll();
-    enableActive(active);
-    return active;
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Tab') return;
-
-    const activeEl = document.activeElement;
-    if (!VIEWPORT.contains(activeEl)) return;
-
-    const active = syncTabState();
-    if (!active.length) return;
-
-    const idx = active.indexOf(activeEl);
-
-    e.preventDefault();
-
-    if (e.shiftKey) {
-      const prev = idx > 0 ? active[idx - 1] : active[active.length - 1];
-      prev.focus({ preventScroll: true });
-    } else {
-      const next = idx < active.length - 1 ? active[idx + 1] : active[0];
-      next.focus({ preventScroll: true });
+  function cacheOrigTabIndex(el) {
+    if (!el.hasAttribute('data-orig-tabindex')) {
+      const orig = el.getAttribute('tabindex');
+      el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
     }
-  }, true);
+  }
 
-  // Keep state in sync as it scrolls
-  let raf;
-  const tick = () => {
-    syncTabState();
-    raf = requestAnimationFrame(tick);
-  };
-  raf = requestAnimationFrame(tick);
+  function setTabIndex(el, tabbable) {
+    cacheOrigTabIndex(el);
+
+    if (tabbable) {
+      const orig = el.getAttribute('data-orig-tabindex');
+      if (orig === '') el.removeAttribute('tabindex');
+      else el.setAttribute('tabindex', orig);
+    } else {
+      el.setAttribute('tabindex', '-1');
+    }
+  }
+
+  function setSlideTabbable(slide, tabbable) {
+    // IMPORTANT: handle the slide wrapper itself
+    setTabIndex(slide, tabbable);
+
+    // Handle children
+    slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+  }
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(entry => {
+        // Require a decent amount of visibility before allowing tabbing
+        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        setSlideTabbable(entry.target, tabbable);
+      });
+    },
+    {
+      root: VIEWPORT,                 // must be the overflow-hidden viewport
+      threshold: [0, 0.6, 1.0],
+      rootMargin: '0px'
+    }
+  );
+
+  // Observe current slides
+  const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
+  slides.forEach(slide => io.observe(slide));
+
+  // If slides are injected/duplicated later, observe them too
+  const mo = new MutationObserver(() => {
+    SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
+      if (!slide.__ioBound) {
+        slide.__ioBound = true;
+        io.observe(slide);
+      }
+    });
+  });
+  mo.observe(SECTION, { childList: true, subtree: true });
+
+  // Initialize binding marker for existing slides
+  slides.forEach(s => (s.__ioBound = true));
 })();
 </script>
-
-
 
 
 {% schema %}
