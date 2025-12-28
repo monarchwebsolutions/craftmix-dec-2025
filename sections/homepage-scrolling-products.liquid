@@ -687,7 +687,7 @@ For inquiries or permissions, contact daniel@section.store
       </div>
     </div>
 </div>
-<script>
+{% comment %} <script>
 // Only focus on visible elements
 (() => {
   const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
@@ -756,7 +756,7 @@ For inquiries or permissions, contact daniel@section.store
   // Initialize binding marker for existing slides
   slides.forEach(s => (s.__ioBound = true));
 })();
-</script>
+</script> {% endcomment %}
 
 
 {% schema %}
