@@ -331,6 +331,9 @@ h2 {
   padding: 0.25rem 0.625rem 0; /* 4px 10px 0 */
   font-size: 0.75rem; /* 12px */
 }
+.tool-tip-right .tool-tip-link{
+  display:block
+}
 
 .tool-tip-final-price{
   color:var(--craftmix-orange);
