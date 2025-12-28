@@ -537,8 +537,8 @@ For inquiries or permissions, contact daniel@section.store
       {% endif %}
       <h2 class="tiny-header">FIND YOUR FLAVOR</h2>
       <div class="marquee-horizontal-{{ section.id }}">
-        {% for item in (1..4) %}
-          <div class="track-horizontal-{{ section.id }}">
+        {% for item in (1..2) %}
+          <div class="track-horizontal-{{ section.id }}" {% if i == 2 %}aria-hidden="true" data-duplicate="true"{% endif %}>
             {% if collection != blank %}
               {% if collection_show_all %}
                 {% for product in collections[collection].products %}
