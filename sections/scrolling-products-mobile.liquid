@@ -139,6 +139,14 @@ For inquiries or permissions, contact daniel@section.store
 -%}
 
 {%- style -%}
+  .scrolling-products-mobile-container,
+.section-{{ section.id }}-settings {
+  overflow-x: clip;
+}
+.testimonials-slider-{{ section.id }} {
+  overflow: hidden; /* reinforce */
+  max-width: 100%;
+}
 
   {{  heading_font | font_face: font_display: 'swap' }}
   {{  sub_heading_font | font_face: font_display: 'swap' }}
