@@ -791,7 +791,7 @@ For inquiries or permissions, contact daniel@section.store
           {% assign product_collection = collections['new-website-products'] %}
           {% for product in product_collection.products %}
             {% unless product.tags contains "price_test" %}
-            <div href="{{ product.url }}" class="testimonials-slide-{{ section.id }} swiper-slide">
+            <div class="testimonials-slide-{{ section.id }} swiper-slide">
               <div class="scrolling-product-badge">12 pack</div>
               <form method="post" action="/cart/add">
                 <input type="hidden" name="id" value="{{ product.variants.first.id }}">
@@ -805,7 +805,7 @@ For inquiries or permissions, contact daniel@section.store
                 </div>
               {% endunless %}
               {% unless hide_content %}
-                <div class="testimonials-content-{{ section.id }}">
+                <a href="{{ product.url }}" class="testimonials-content-{{ section.id }}">
                   {% if block.settings.stars_count != 0 %}
                     <div class="testimonials-stars-{{ section.id }}">
                       {% if stars_icon != blank %}
@@ -827,7 +827,7 @@ For inquiries or permissions, contact daniel@section.store
                   {% endif %}
           
                   <h3 class="scrolling-product-title">{{ product.title }}</h3>
-                </div>
+                </a>
               {% endunless %}
             </div>
             {% endunless %}
