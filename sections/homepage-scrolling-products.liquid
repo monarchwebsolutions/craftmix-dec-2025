@@ -686,73 +686,110 @@ For inquiries or permissions, contact daniel@section.store
 </div>
 <script>
 (() => {
-  const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
-  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
+  const SECTION = document.currentScript.closest('.hp-scrolling-products-container');
+  if (!SECTION) return;
+
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
+  if (!VIEWPORT) return;
+
+  const WINDOW_SIZE = parseInt(SECTION.dataset.slideWindow || '0', 10);
+  if (!WINDOW_SIZE) return;
 
   const SLIDE_SELECTOR = '.swiper-slide';
-  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+  const ITEM_SELECTOR = '.swiper-slide, .swiper-slide-atc, a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
-  function cacheOrigTabIndex(el) {
+  function cacheOrigTab(el) {
     if (!el.hasAttribute('data-orig-tabindex')) {
       const orig = el.getAttribute('tabindex');
       el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
     }
   }
 
-  function setTabIndex(el, tabbable) {
-    cacheOrigTabIndex(el);
+  function setTab(el, tabbable) {
+    cacheOrigTab(el);
 
     if (tabbable) {
       const orig = el.getAttribute('data-orig-tabindex');
       if (orig === '') el.removeAttribute('tabindex');
       else el.setAttribute('tabindex', orig);
+      el.removeAttribute('aria-hidden');
     } else {
       el.setAttribute('tabindex', '-1');
+      el.setAttribute('aria-hidden', 'true');
     }
   }
 
-  function setSlideTabbable(slide, tabbable) {
-    // IMPORTANT: handle the slide wrapper itself
-    setTabIndex(slide, tabbable);
-
-    // Handle children
-    slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+  function getSlides() {
+    return Array.from(SECTION.querySelectorAll(SLIDE_SELECTOR));
   }
 
-  const io = new IntersectionObserver(
-    (entries) => {
-      entries.forEach(entry => {
-        // Require a decent amount of visibility before allowing tabbing
-        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
-        setSlideTabbable(entry.target, tabbable);
-      });
-    },
-    {
-      root: VIEWPORT,                 // must be the overflow-hidden viewport
-      threshold: [0, 0.6, 1.0],
-      rootMargin: '0px'
+  function findStartIndex(slides) {
+    const vpRect = VIEWPORT.getBoundingClientRect();
+    const leftEdge = vpRect.left;
+
+    // “First not-yet-passed-left” = first slide whose right edge is still right of viewport left edge
+    // Using right edge avoids selecting a slide that is already fully gone.
+    for (let i = 0; i < slides.length; i++) {
+      const r = slides[i].getBoundingClientRect();
+      if (r.right > leftEdge + 2) return i; // small buffer
     }
-  );
+    return 0;
+  }
 
-  // Observe current slides
-  const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
-  slides.forEach(slide => io.observe(slide));
+  function applyWindow() {
+    const slides = getSlides();
+    if (!slides.length) return;
 
-  // If slides are injected/duplicated later, observe them too
-  const mo = new MutationObserver(() => {
-    SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
-      if (!slide.__ioBound) {
-        slide.__ioBound = true;
-        io.observe(slide);
-      }
+    const start = findStartIndex(slides);
+    const end = start + WINDOW_SIZE - 1;
+
+    slides.forEach((slide, i) => {
+      const inWindow = i >= start && i <= end;
+
+      // Slide wrapper itself
+      setTab(slide, inWindow);
+
+      // Interactive elements inside
+      slide.querySelectorAll(ITEM_SELECTOR).forEach(el => setTab(el, inWindow));
     });
-  });
-  mo.observe(SECTION, { childList: true, subtree: true });
+  }
 
-  // Initialize binding marker for existing slides
-  slides.forEach(s => (s.__ioBound = true));
+  // Update continuously only while user is interacting (focus within viewport)
+  let rafId = null;
+  function startLoop() {
+    if (rafId) return;
+    const tick = () => {
+      applyWindow();
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+  }
+  function stopLoop() {
+    if (!rafId) return;
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  // Start when user tabs into it, stop when they leave (keeps it efficient)
+  VIEWPORT.addEventListener('focusin', startLoop);
+  VIEWPORT.addEventListener('focusout', (e) => {
+    // If focus leaves the viewport entirely, stop.
+    // (Timeout lets focus move within children without stopping.)
+    setTimeout(() => {
+      if (!VIEWPORT.contains(document.activeElement)) stopLoop();
+    }, 0);
+  });
+
+  // Also apply on load + resize
+  applyWindow();
+  window.addEventListener('resize', () => setTimeout(applyWindow, 50));
+
+  // If the DOM changes (duplicates injected), re-apply
+  const mo = new MutationObserver(() => applyWindow());
+  mo.observe(SECTION, { childList: true, subtree: true });
 })();
 </script>
+
 
 
 {% schema %}
