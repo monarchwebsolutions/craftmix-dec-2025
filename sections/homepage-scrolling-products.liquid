@@ -692,6 +692,9 @@ For inquiries or permissions, contact daniel@section.store
   const SLIDE_SELECTOR = '.swiper-slide';
   const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
+  // how many unique items you want tabbable at a time
+  const WINDOW = parseInt('{{ count }}', 10) || 0;
+
   function cacheOrigTabIndex(el) {
     if (!el.hasAttribute('data-orig-tabindex')) {
       const orig = el.getAttribute('tabindex');
@@ -712,23 +715,62 @@ For inquiries or permissions, contact daniel@section.store
   }
 
   function setSlideTabbable(slide, tabbable) {
-    // IMPORTANT: handle the slide wrapper itself
     setTabIndex(slide, tabbable);
-
-    // Handle children
     slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+  }
+
+  // Track which slides IO considers “visible enough”
+  const visibleSet = new Set();
+
+  // Enforce: start at FIRST visible slide in DOM order, keep next WINDOW slides tabbable, disable all others
+  function enforceWindow() {
+    if (!WINDOW) return;
+
+    const slides = Array.from(SECTION.querySelectorAll(SLIDE_SELECTOR));
+    if (!slides.length) return;
+
+    // Find the first "visible enough" slide (DOM order)
+    const firstVisibleIdx = slides.findIndex(s => visibleSet.has(s));
+
+    // If nothing is visible (rare during load), disable everything
+    if (firstVisibleIdx === -1) {
+      slides.forEach(s => setSlideTabbable(s, false));
+      return;
+    }
+
+    const start = firstVisibleIdx;
+    const end = start + WINDOW - 1;
+
+    slides.forEach((slide, idx) => {
+      const tabbable = idx >= start && idx <= end;
+      setSlideTabbable(slide, tabbable);
+    });
+  }
+
+  // Small debounce so we don't thrash when multiple entries fire in one frame
+  let raf = null;
+  function scheduleEnforce() {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      enforceWindow();
+    });
   }
 
   const io = new IntersectionObserver(
     (entries) => {
       entries.forEach(entry => {
-        // Require a decent amount of visibility before allowing tabbing
-        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
-        setSlideTabbable(entry.target, tabbable);
+        const visibleEnough = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+
+        if (visibleEnough) visibleSet.add(entry.target);
+        else visibleSet.delete(entry.target);
       });
+
+      // After updating the visibility set, enforce the window rule
+      scheduleEnforce();
     },
     {
-      root: VIEWPORT,                 // must be the overflow-hidden viewport
+      root: VIEWPORT,
       threshold: [0, 0.6, 1.0],
       rootMargin: '0px'
     }
@@ -736,7 +778,10 @@ For inquiries or permissions, contact daniel@section.store
 
   // Observe current slides
   const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
-  slides.forEach(slide => io.observe(slide));
+  slides.forEach(slide => {
+    slide.__ioBound = true;
+    io.observe(slide);
+  });
 
   // If slides are injected/duplicated later, observe them too
   const mo = new MutationObserver(() => {
@@ -746,13 +791,16 @@ For inquiries or permissions, contact daniel@section.store
         io.observe(slide);
       }
     });
+    // Re-enforce in case DOM order changed / new slides appended
+    scheduleEnforce();
   });
   mo.observe(SECTION, { childList: true, subtree: true });
 
-  // Initialize binding marker for existing slides
-  slides.forEach(s => (s.__ioBound = true));
+  // Initial enforce pass (covers first paint)
+  scheduleEnforce();
 })();
 </script>
+
 
 
 {% schema %}
