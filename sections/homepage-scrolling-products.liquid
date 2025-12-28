@@ -690,73 +690,72 @@ For inquiries or permissions, contact daniel@section.store
 <script>
 (() => {
   const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
-  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
-  if (!VIEWPORT) return;
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
 
-  const TARGETS = '.swiper-slide a[href], .swiper-slide-atc';
+  const SLIDE_SELECTOR = '.swiper-slide';
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
-  function isVisibleEnough(el, ratio = 0.6) {
-    if (!el) return false;
-    const vp = VIEWPORT.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-
-    const left = Math.max(r.left, vp.left);
-    const right = Math.min(r.right, vp.right);
-    const visibleW = Math.max(0, right - left);
-
-    return (visibleW / Math.max(1, r.width)) >= ratio;
+  function cacheOrigTabIndex(el) {
+    if (!el.hasAttribute('data-orig-tabindex')) {
+      const orig = el.getAttribute('tabindex');
+      el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
+    }
   }
 
-  function getVisibleTargets() {
-    return Array.from(SECTION.querySelectorAll(TARGETS)).filter(el => isVisibleEnough(el, 0.6));
+  function setTabIndex(el, tabbable) {
+    cacheOrigTabIndex(el);
+
+    if (tabbable) {
+      const orig = el.getAttribute('data-orig-tabindex');
+      if (orig === '') el.removeAttribute('tabindex');
+      else el.setAttribute('tabindex', orig);
+    } else {
+      el.setAttribute('tabindex', '-1');
+    }
   }
 
-  function recoverFocus(offEl) {
-    const visibles = getVisibleTargets();
-    if (!visibles.length) return;
+  function setSlideTabbable(slide, tabbable) {
+    // IMPORTANT: handle the slide wrapper itself
+    setTabIndex(slide, tabbable);
 
-    // Try closest visible by screen position
-    const offRect = offEl.getBoundingClientRect();
-    let best = visibles[0];
-    let bestDist = Infinity;
+    // Handle children
+    slide.querySelectorAll(FOCUSABLE).forEach(el => setTabIndex(el, tabbable));
+  }
 
-    visibles.forEach(v => {
-      const vr = v.getBoundingClientRect();
-      const dist = Math.abs(vr.left - offRect.left);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = v;
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(entry => {
+        // Require a decent amount of visibility before allowing tabbing
+        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        setSlideTabbable(entry.target, tabbable);
+      });
+    },
+    {
+      root: VIEWPORT,                 // must be the overflow-hidden viewport
+      threshold: [0, 0.6, 1.0],
+      rootMargin: '0px'
+    }
+  );
+
+  // Observe current slides
+  const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
+  slides.forEach(slide => io.observe(slide));
+
+  // If slides are injected/duplicated later, observe them too
+  const mo = new MutationObserver(() => {
+    SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
+      if (!slide.__ioBound) {
+        slide.__ioBound = true;
+        io.observe(slide);
       }
     });
+  });
+  mo.observe(SECTION, { childList: true, subtree: true });
 
-    // Move focus only if needed
-    if (best && best !== offEl) best.focus({ preventScroll: true });
-  }
-
-  // If focus moves inside marquee, ensure it stays on-screen
-  document.addEventListener('focusin', (e) => {
-    const el = e.target;
-    if (!VIEWPORT.contains(el)) return;
-
-    // allow a tick for the :focus-within pause to apply
-    setTimeout(() => {
-      if (!isVisibleEnough(el, 0.35)) recoverFocus(el);
-    }, 0);
-  }, true);
-
-  // Optional: if something becomes offscreen while focused (rare after pause), recover on next frame
-  let raf = null;
-  function loop() {
-    const active = document.activeElement;
-    if (active && VIEWPORT.contains(active) && !isVisibleEnough(active, 0.35)) {
-      recoverFocus(active);
-    }
-    raf = requestAnimationFrame(loop);
-  }
-  raf = requestAnimationFrame(loop);
+  // Initialize binding marker for existing slides
+  slides.forEach(s => (s.__ioBound = true));
 })();
 </script>
-
 
 
 {% schema %}
