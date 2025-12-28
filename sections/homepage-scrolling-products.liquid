@@ -688,21 +688,25 @@ For inquiries or permissions, contact daniel@section.store
     </div>
 </div>
 <script>
-// Only apply keyboard focus logic on desktop (1024px+)
+// Desktop-only: only elements that are currently visible in the marquee are tabbable.
+// Result: Tab will stop at the last visible product, then go to the next section (no off-screen focusing).
 (() => {
   const DESKTOP_MQ = window.matchMedia('(min-width: 1024px)');
-
-  // Exit immediately on mobile/tablet
   if (!DESKTOP_MQ.matches) return;
 
-  const SECTION =
-    document.currentScript?.closest('.hp-scrolling-products-container') || document;
-  const VIEWPORT =
-    SECTION.querySelector('.marquee-horizontal-{{ section.id }}') || null;
+  const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
+  if (!VIEWPORT) return;
 
-  const SLIDE_SELECTOR = '.swiper-slide';
-  const FOCUSABLE =
-    'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+  // IMPORTANT: target only the actual interactive elements in your cards
+  // (your .swiper-slide class is on <a> in some variants; in others it's a wrapper).
+  const CARD_LINKS = '.swiper-slide[href], a.swiper-slide[href]';
+  const ATC_BTNS  = '.swiper-slide-atc, .scrolling-product-atc-btn';
+
+  const FOCUSABLE = [
+    CARD_LINKS,
+    ATC_BTNS,
+  ].join(',');
 
   function cacheOrigTabIndex(el) {
     if (!el.hasAttribute('data-orig-tabindex')) {
@@ -718,23 +722,25 @@ For inquiries or permissions, contact daniel@section.store
       const orig = el.getAttribute('data-orig-tabindex');
       if (orig === '') el.removeAttribute('tabindex');
       else el.setAttribute('tabindex', orig);
+      el.removeAttribute('aria-hidden');
     } else {
       el.setAttribute('tabindex', '-1');
+      // optional but fine: keeps SR from wandering into invisible duplicates
+      el.setAttribute('aria-hidden', 'true');
     }
   }
 
-  function setSlideTabbable(slide, tabbable) {
-    slide.querySelectorAll(FOCUSABLE).forEach(el =>
-      setTabIndex(el, tabbable)
-    );
+  function setFocusableTabbable(el, tabbable) {
+    setTabIndex(el, tabbable);
   }
 
+  // Observe the focusable elements themselves (not the wrapper),
+  // so we never accidentally leave an off-screen <a> tabbable.
   const io = new IntersectionObserver(
     entries => {
       entries.forEach(entry => {
-        const tabbable =
-          entry.isIntersecting && entry.intersectionRatio >= 0.6;
-        setSlideTabbable(entry.target, tabbable);
+        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        setFocusableTabbable(entry.target, tabbable);
       });
     },
     {
@@ -744,22 +750,29 @@ For inquiries or permissions, contact daniel@section.store
     }
   );
 
-  const slides = SECTION.querySelectorAll(SLIDE_SELECTOR);
-  slides.forEach(slide => io.observe(slide));
+  function bindAll() {
+    SECTION.querySelectorAll(FOCUSABLE).forEach(el => {
+      if (el.__ioBound) return;
+      el.__ioBound = true;
 
-  const mo = new MutationObserver(() => {
-    SECTION.querySelectorAll(SLIDE_SELECTOR).forEach(slide => {
-      if (!slide.__ioBound) {
-        slide.__ioBound = true;
-        io.observe(slide);
-      }
+      // default to not tabbable until IO says it's visible
+      setFocusableTabbable(el, false);
+      io.observe(el);
     });
-  });
+  }
 
+  bindAll();
+
+  // Handle any late DOM injection / duplication
+  const mo = new MutationObserver(() => bindAll());
   mo.observe(SECTION, { childList: true, subtree: true });
-  slides.forEach(s => (s.__ioBound = true));
+
+  // If the marquee animation causes IO jitter, this keeps things stable:
+  // rebinding isn't necessary, but forcing an initial IO evaluation helps.
+  requestAnimationFrame(() => bindAll());
 })();
 </script>
+
 
 
 
