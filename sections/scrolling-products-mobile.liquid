@@ -864,7 +864,6 @@ For inquiries or permissions, contact daniel@section.store
 
 <script>
   function initTestimonials12() {
-    slider.slideToLoop(0, 0);
     const sliderEl = document.querySelector('.testimonials-slider-{{ section.id }}');
     if (!sliderEl) return;
 
@@ -904,7 +903,7 @@ For inquiries or permissions, contact daniel@section.store
         }
       }
     });
-
+    slider.slideToLoop(0, 0);
     // Helpers
     function pauseAutoplay() {
       try {
