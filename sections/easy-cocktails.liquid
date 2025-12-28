@@ -152,7 +152,12 @@
           if (video) {
             if (index === videoSlider.index) {
               video.play();
-              video.muted = false;
+              if(video.muted == true){
+                const icon = button.querySelector('img');
+                icon.src = "https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205";
+                icon.alt = "Unmute Icon";
+                video.muted = false;
+              }
               if (playBtn) playBtn.style.display = 'none';
             } else {
               video.pause();
