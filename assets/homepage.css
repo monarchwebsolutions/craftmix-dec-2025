@@ -1833,7 +1833,7 @@
   margin-bottom: 60px;
   position: relative;
   padding-top: 86px; /* Add padding to make room for Flickity the buttons */
-
+  overflow: hidden;
 }
 
 .custom-blog-carousel-subheading {
