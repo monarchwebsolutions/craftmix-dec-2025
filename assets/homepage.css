@@ -1199,23 +1199,7 @@
   overflow: hidden;
 }
 
-/* Pin arrows to the container */
-.custom-video-review-carousel-container .flickity-prev-next-button {
-  position: absolute !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  z-index: 20 !important;
-}
 
-/* Left arrow pinned */
-.custom-video-review-carousel-container .flickity-prev-next-button.previous {
-  left: 16px !important;
-}
-
-/* Right arrow pinned */
-.custom-video-review-carousel-container .flickity-prev-next-button.next {
-  right: 16px !important;
-}
 
 
 .play-btn {
