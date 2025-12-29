@@ -37,20 +37,3 @@
     </div>
   {% endif %}
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const container = document.querySelector('.custom-video-review-carousel-container');
-  if (!container) return;
-
-  const onFocusIn = () => container.classList.add('carousel-has-focus');
-  const onFocusOut = (e) => {
-    // if focus moved outside the container
-    if (!container.contains(e.relatedTarget)) {
-      container.classList.remove('carousel-has-focus');
-    }
-  };
-
-  container.addEventListener('focusin', onFocusIn);
-  container.addEventListener('focusout', onFocusOut);
-});
-</script>
