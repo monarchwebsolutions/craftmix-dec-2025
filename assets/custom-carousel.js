@@ -77,6 +77,7 @@ function waitForFlickityAndInit() {
 
       flkty.on('ready', syncArrowDisabledState);
       flkty.on('change', syncArrowDisabledState);
+      flkty.on('settle', syncArrowDisabledState);
     });
   }
 
