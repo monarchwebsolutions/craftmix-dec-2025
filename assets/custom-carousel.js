@@ -34,25 +34,16 @@ function waitForFlickityAndInit() {
         return Math.floor(visibleWidth / cellWidth);
       }
 
-      flkty.on("select", updateButtonStates);
-      updateButtonStates();
+      // Optional: keep disabled state accurate when wrapAround is false
+  function syncArrowDisabledState() {
+    if (flkty.options.wrapAround) return; // never disabled in loop mode
 
-      function updateButtonStates() {
-        const totalSlides = flkty.slides.length;
-        const visibleSlides = getVisibleSlides();
-        const maxIndex = totalSlides - visibleSlides;
+    prevBtn.disabled = flkty.selectedIndex === 0;
+    nextBtn.disabled = flkty.selectedIndex === flkty.slides.length - 1;
+  }
 
-        if (prevBtn) {
-          prevBtn.classList.toggle("disabled", flkty.selectedIndex === 0);
-        }
-
-        if (nextBtn) {
-          nextBtn.classList.toggle(
-            "disabled",
-            flkty.selectedIndex >= maxIndex
-          );
-        }
-      }
+  flkty.on('ready', syncArrowDisabledState);
+  flkty.on('change', syncArrowDisabledState);
     });
   }
 
