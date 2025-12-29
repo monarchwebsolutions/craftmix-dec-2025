@@ -67,7 +67,7 @@
         imagesrcset="{{ all_products[settings.hero_tool_tip_product_global].featured_image | image_url: width: 200 }} 1x"
         imagesizes="86px"
       >
-      <link rel="stylesheet" href="{{ 'homepage.min.css' | asset_url }}">
+      {% comment %} <link rel="stylesheet" href="{{ 'homepage.min.css' | asset_url }}"> {% endcomment %}
     {% elsif request.path == '/products' %}
       <script>
         window.location.href = '/collections/flavors-2024';
