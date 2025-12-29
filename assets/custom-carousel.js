@@ -17,6 +17,10 @@ function waitForFlickityAndInit() {
     const carousels = document.querySelectorAll('.custom-carousel');
 
     carousels.forEach((el, index) => {
+      // Prevent double-initializing the same carousel if the script runs twice
+      if (el.dataset.customCarouselInitialized === 'true') return;
+      el.dataset.customCarouselInitialized = 'true';
+
       const flkty = new Flickity(el, {
         cellAlign: cellAlign,
         wrapAround: false,
@@ -29,18 +33,29 @@ function waitForFlickityAndInit() {
 
       console.log(`Carousel ${index + 1} has ${flkty.slides.length} slides`);
 
-      const container =
-        el.closest('.custom-video-review-carousel-container') || document;
+      // IMPORTANT: buttons must be scoped to the carousel wrapper.
+      // If this selector doesn't match your DOM, adjust it so each carousel gets its own wrapper.
+      const container = el.closest('.custom-video-review-carousel-container');
 
-      const prevBtn =
-        container.querySelector('.custom-carousel-prev') ||
-        document.querySelector('.custom-carousel-prev');
+      // If we can’t find a proper wrapper, do NOT fall back to document-level buttons.
+      // Falling back is what causes multiple carousels to fight over one button.
+      const prevBtn = container ? container.querySelector('.custom-carousel-prev') : null;
+      const nextBtn = container ? container.querySelector('.custom-carousel-next') : null;
 
-      const nextBtn =
-        container.querySelector('.custom-carousel-next') ||
-        document.querySelector('.custom-carousel-next');
+      // If buttons exist, guard against rebinding them if the script runs twice.
+      if (prevBtn && prevBtn.dataset.customCarouselBound === 'true') {
+        // already bound by this script
+      } else if (prevBtn) {
+        prevBtn.dataset.customCarouselBound = 'true';
+      }
 
-      // ---- Visible window math (robust) ----
+      if (nextBtn && nextBtn.dataset.customCarouselBound === 'true') {
+        // already bound by this script
+      } else if (nextBtn) {
+        nextBtn.dataset.customCarouselBound = 'true';
+      }
+
+      // ---- Visible window math (baseline) ----
       let visibleCount = 1;
 
       function getCellOuterWidth() {
@@ -60,11 +75,8 @@ function waitForFlickityAndInit() {
 
         const viewportW = viewport.clientWidth || 0;
 
-        // IMPORTANT:
-        // Use floor (not round) to avoid overestimating how many cells are fully visible.
-        // Add a tiny epsilon to protect against subpixel rounding like 2.999999 -> 2.
-        visibleCount = Math.max(1, Math.floor((viewportW + 1) / cellOuterW));
-
+        // Reverted to your original approach (as requested)
+        visibleCount = Math.max(1, Math.round(viewportW / cellOuterW));
         return visibleCount;
       }
 
@@ -81,13 +93,11 @@ function waitForFlickityAndInit() {
       function lockArrow(which) {
         arrowLock = which;
         if (arrowLockTimer) clearTimeout(arrowLockTimer);
-        // brief lock window so carousel focus handlers don't steal focus mid-transition
         arrowLockTimer = setTimeout(() => (arrowLock = null), 600);
       }
 
       function safeFocus(elm) {
         if (!elm) return;
-        // ensure focus persists after Flickity DOM updates
         requestAnimationFrame(() => {
           try {
             elm.focus({ preventScroll: true });
@@ -100,11 +110,11 @@ function waitForFlickityAndInit() {
         if (!btn) return;
         btn.disabled = !!disabled;
         btn.classList.toggle('disabled', !!disabled);
-        // If it becomes disabled while focused, keep focus there (do not let it "fall through")
         if (disabled && document.activeElement === btn) safeFocus(btn);
       }
 
       function syncArrowDisabledState() {
+        // If this carousel doesn't have scoped buttons, skip syncing (prevents cross-carousel fights)
         if (!prevBtn || !nextBtn) return;
 
         if (flkty.options.wrapAround) {
@@ -120,12 +130,9 @@ function waitForFlickityAndInit() {
         setDisabled(nextBtn, idx >= maxIndex);
       }
 
-      // Flickity sometimes reports transient indices during animation.
-      // Only finalize disabled states on 'settle' (authoritative).
       function syncOnSettle() {
         syncArrowDisabledState();
 
-        // If the user is navigating via arrow buttons, preserve focus there.
         if (arrowLock === 'prev' && prevBtn) safeFocus(prevBtn);
         if (arrowLock === 'next' && nextBtn) safeFocus(nextBtn);
       }
@@ -144,7 +151,10 @@ function waitForFlickityAndInit() {
         flkty.select(target, false, false);
       }
 
-      if (prevBtn) {
+      // Bind arrow events ONLY if buttons exist and were not already bound
+      if (prevBtn && prevBtn.dataset.customCarouselEventsBound !== 'true') {
+        prevBtn.dataset.customCarouselEventsBound = 'true';
+
         prevBtn.addEventListener('click', (e) => {
           e.preventDefault();
           if (prevBtn.disabled) {
@@ -157,7 +167,6 @@ function waitForFlickityAndInit() {
         });
 
         prevBtn.addEventListener('keydown', (e) => {
-          // Support Space/Enter on buttons reliably (some themes interfere)
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             prevBtn.click();
@@ -165,7 +174,9 @@ function waitForFlickityAndInit() {
         });
       }
 
-      if (nextBtn) {
+      if (nextBtn && nextBtn.dataset.customCarouselEventsBound !== 'true') {
+        nextBtn.dataset.customCarouselEventsBound = 'true';
+
         nextBtn.addEventListener('click', (e) => {
           e.preventDefault();
           if (nextBtn.disabled) {
@@ -201,10 +212,8 @@ function waitForFlickityAndInit() {
       }
 
       el.addEventListener('focusin', (e) => {
-        // While user is operating arrows, do not let carousel focus handlers run
         if (arrowLock) return;
 
-        // Ignore focus from dots / flickity internal buttons
         if (
           e.target.closest('.custom-carousel-prev, .custom-carousel-next') ||
           e.target.closest('.flickity-button') ||
@@ -216,8 +225,6 @@ function waitForFlickityAndInit() {
 
         const insideCell = e.target.closest('.carousel-cell');
 
-        // If focus landed on the carousel root itself (tabindex=0),
-        // only “enter” the selected cell when tabbing FORWARD.
         if (!insideCell) {
           if (e.target === el && lastTabDirection === 'forward') {
             focusSelectedCell();
@@ -235,7 +242,6 @@ function waitForFlickityAndInit() {
         const leftMost = flkty.selectedIndex;
         const rightMost = flkty.selectedIndex + vis - 1;
 
-        // If already within visible window, do nothing
         if (focusedIndex >= leftMost && focusedIndex <= rightMost) return;
 
         const maxIndex = getMaxIndex();
@@ -257,9 +263,7 @@ function waitForFlickityAndInit() {
         syncArrowDisabledState();
       });
 
-      // Avoid disabling mid-animation; keep arrows enabled until settle recalculates.
       flkty.on('select', () => {
-        // Keep focus on arrow if user is arrowing
         if (arrowLock === 'prev' && prevBtn) safeFocus(prevBtn);
         if (arrowLock === 'next' && nextBtn) safeFocus(nextBtn);
       });
