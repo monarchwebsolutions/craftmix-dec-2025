@@ -1,183 +1,124 @@
 function waitForFlickityAndInit() {
-  if (typeof Flickity === "undefined") {
+  if (typeof Flickity === 'undefined') {
     return setTimeout(waitForFlickityAndInit, 50);
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const carousels = document.querySelectorAll(".custom-carousel");
-    if (!carousels.length) return;
+  function initializeCarousels(cellAlign, contain, freeScroll) {
+    const carousels = document.querySelectorAll('.custom-carousel');
 
-    // Global arrows (your current setup)
-    const prevBtn = document.querySelector(".custom-carousel-prev");
-    const nextBtn = document.querySelector(".custom-carousel-next");
-
-    // Track the Flickity instance we want the arrows to control
-    // If you have only one carousel, this is perfect.
-    // If you have multiple, we’ll keep "active" as the last interacted one.
-    let activeFlkty = null;
-
-    function initOneCarousel(el) {
-      if (el.__flktyInitialized) return el.__flktyInstance;
-      el.__flktyInitialized = true;
-
-      const isDesktop = window.innerWidth >= 1024;
-
+    carousels.forEach((el, index) => {
       const flkty = new Flickity(el, {
-        cellAlign: isDesktop ? "left" : "center",
+        cellAlign: cellAlign,
         wrapAround: false,
-        contain: isDesktop ? true : false,
+        contain: contain,
         fullscreen: true,
         pageDots: true,
-        prevNextButtons: false,
-        freeScroll: isDesktop ? false : true,
+        prevNextButtons: false, // we are using custom external arrows
+        freeScroll: freeScroll
       });
 
-      el.__flktyInstance = flkty;
+      console.log(`Carousel ${index + 1} has ${flkty.slides.length} slides`);
 
-      // Make this carousel the active target when user interacts with it
-      const makeActive = () => {
-        activeFlkty = flkty;
-        syncArrowDisabledState();
-      };
+      // IMPORTANT: scope arrows to the closest carousel container if possible
+      // (prevents multiple carousels on a page from sharing one set of buttons)
+      const container = el.closest('.custom-video-review-carousel-container') || document;
 
-      el.addEventListener("pointerdown", makeActive);
-      el.addEventListener("focusin", makeActive);
+      const prevBtn = container.querySelector('.custom-carousel-prev');
+      const nextBtn = container.querySelector('.custom-carousel-next');
 
-      function getVisibleCellsCount() {
-        // Only relevant for desktop contain + left aligned
-        if (!flkty.cells || !flkty.cells.length) return 1;
+      // If you truly have only one carousel on the page and the buttons live elsewhere,
+      // fall back to global selectors.
+      const prev = prevBtn || document.querySelector('.custom-carousel-prev');
+      const next = nextBtn || document.querySelector('.custom-carousel-next');
 
-        const viewport = flkty.viewport;
-        const first = flkty.cells[0];
-        const cellW =
-          (first.size && (first.size.outerWidth || first.size.width)) || 0;
-
-        if (!viewport || !cellW) return 1;
-
-        return Math.max(1, Math.floor(viewport.clientWidth / cellW));
+      if (!prev || !next) {
+        console.warn('Custom carousel prev/next buttons not found.');
       }
 
       function syncArrowDisabledState() {
-        // If arrows don't exist, nothing to sync
-        if (!prevBtn || !nextBtn) return;
-
-        const instance = activeFlkty || flkty;
-        if (!instance) return;
-
-        const total = instance.slides.length;
-
-        // Default "last index" for single-item view
-        let lastSelectableIndex = total - 1;
-
-        // Desktop: if contain + left align, disable Next earlier to prevent blank space
-        if (instance.options.contain && instance.options.cellAlign === "left") {
-          const visible = getVisibleCellsCount();
-          lastSelectableIndex = Math.max(0, total - visible);
-        }
-
-        const isFirst = instance.selectedIndex <= 0;
-        const isLast = instance.selectedIndex >= lastSelectableIndex;
-
-        prevBtn.disabled = isFirst;
-        nextBtn.disabled = isLast;
-
-        prevBtn.classList.toggle("disabled", isFirst);
-        nextBtn.classList.toggle("disabled", isLast);
-      }
-
-      // Update disabled state when Flickity changes for ANY reason
-      flkty.on("ready", syncArrowDisabledState);
-      flkty.on("select", syncArrowDisabledState);
-      flkty.on("change", syncArrowDisabledState);
-      flkty.on("settle", syncArrowDisabledState);
-
-      // Critical: when tabbing into a cell, select that cell so index updates
-      el.addEventListener("focusin", (e) => {
-        const cellEl = e.target.closest(".carousel-cell");
-        if (!cellEl) return;
-
-        // Helper: how visible is this cell inside the Flickity viewport?
-        const getVisibleRatio = () => {
-          const viewport = flkty.viewport;
-          if (!viewport) return 1;
-
-          const vRect = viewport.getBoundingClientRect();
-          const cRect = cellEl.getBoundingClientRect();
-
-          const visibleLeft = Math.max(cRect.left, vRect.left);
-          const visibleRight = Math.min(cRect.right, vRect.right);
-          const visibleWidth = Math.max(0, visibleRight - visibleLeft);
-
-          return visibleWidth / Math.max(1, cRect.width);
-        };
-
-        const THRESHOLD = 0.85;
-
-        // If already mostly visible, do nothing
-        if (getVisibleRatio() >= THRESHOLD) {
-          syncArrowDisabledState();
+        // never disabled in loop mode
+        if (flkty.options.wrapAround) {
+          if (prev) {
+            prev.disabled = false;
+            prev.classList.remove('disabled');
+          }
+          if (next) {
+            next.disabled = false;
+            next.classList.remove('disabled');
+          }
           return;
         }
 
-        const cells = flkty.getCellElements();
-        const idx = cells.indexOf(cellEl);
-        if (idx < 0) return;
+        const isFirst = flkty.selectedIndex === 0;
+        const isLast = flkty.selectedIndex === flkty.slides.length - 1;
 
-        // First: animate into view (smoother UX)
-        flkty.select(idx, false, false);
+        if (prev) {
+          prev.disabled = isFirst;
+          prev.classList.toggle('disabled', isFirst);
+        }
+        if (next) {
+          next.disabled = isLast;
+          next.classList.toggle('disabled', isLast);
+        }
+      }
 
-        // Second: after layout updates, verify it actually became visible.
-        // If not, do a single instant correction (fixes the "first time it jumps wrong" bug).
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (getVisibleRatio() < THRESHOLD) {
-              flkty.select(idx, false, true); // instant correction
-            }
-            syncArrowDisabledState();
-          });
+      // External arrow wiring
+      // IMPORTANT: do NOT pass true to next/previous when wrapAround is false.
+      if (prev) {
+        prev.addEventListener('click', () => {
+          if (prev.disabled) return;
+          flkty.previous();
         });
+      }
 
-        // Also resync on settle (covers slow devices / heavy pages)
-        flkty.once("settle", () => {
-          syncArrowDisabledState();
+      if (next) {
+        next.addEventListener('click', () => {
+          if (next.disabled) return;
+          flkty.next();
         });
+      }
+
+      flkty.on('ready', syncArrowDisabledState);
+      flkty.on('change', syncArrowDisabledState);
+      flkty.on('settle', syncArrowDisabledState);
+
+      // Make focus "pull" the carousel to the focused cell,
+      // but ONLY when the focused cell is offscreen.
+      el.addEventListener('focusin', (e) => {
+        const cellEl = e.target.closest('.carousel-cell');
+        if (!cellEl) return;
+
+        const viewport = flkty.viewport;
+        if (!viewport) return;
+
+        const vRect = viewport.getBoundingClientRect();
+        const cRect = cellEl.getBoundingClientRect();
+
+        const fullyVisible = cRect.left >= vRect.left && cRect.right <= vRect.right;
+        if (fullyVisible) return;
+
+        // Select by element (more reliable than index)
+        flkty.selectCell(cellEl, false, false);
+
+        // Ensure arrows reflect the new selection after motion completes
+        flkty.once('settle', syncArrowDisabledState);
       });
 
+      // Initial state
+      syncArrowDisabledState();
+    });
+  }
 
-
-      window.addEventListener("resize", () => {
-        // Re-sync because visible count changes on desktop
-        syncArrowDisabledState();
-      });
-
-      // Start with this as the active carousel if none set
-      if (!activeFlkty) activeFlkty = flkty;
-
-      return flkty;
+  function initializeOnLoad() {
+    const screenWidth = window.innerWidth;
+    if (screenWidth >= 1020) {
+      initializeCarousels('left', true, false);
+    } else {
+      initializeCarousels('center', false, true);
     }
+  }
 
-    // Init all carousels
-    carousels.forEach(initOneCarousel);
-
-    // Wire arrows ONCE (prevents multi-fire / overshoot)
-    if (prevBtn && !prevBtn.__boundToFlickity) {
-      prevBtn.__boundToFlickity = true;
-      prevBtn.addEventListener("click", () => {
-        if (!activeFlkty) return;
-        if (prevBtn.disabled || prevBtn.classList.contains("disabled")) return;
-        activeFlkty.previous(false, true);
-      });
-    }
-
-    if (nextBtn && !nextBtn.__boundToFlickity) {
-      nextBtn.__boundToFlickity = true;
-      nextBtn.addEventListener("click", () => {
-        if (!activeFlkty) return;
-        if (nextBtn.disabled || nextBtn.classList.contains("disabled")) return;
-        activeFlkty.next(false, true);
-      });
-    }
-  });
+  document.addEventListener('DOMContentLoaded', initializeOnLoad);
 }
 
 waitForFlickityAndInit();
