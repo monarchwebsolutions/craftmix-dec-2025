@@ -43,11 +43,11 @@ function waitForFlickityAndInit() {
         const visibleSlides = getVisibleSlides();
         const maxIndex = totalSlides - visibleSlides;
 
-        if (prevButton) {
+        if (prevBtn) {
           prevButton.classList.toggle("disabled", flkty.selectedIndex === 0);
         }
 
-        if (nextButton) {
+        if (nextBtn) {
           nextButton.classList.toggle(
             "disabled",
             flkty.selectedIndex >= maxIndex
