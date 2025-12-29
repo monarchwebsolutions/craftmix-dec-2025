@@ -27,7 +27,7 @@ function waitForFlickityAndInit() {
         contain: contain,
         fullscreen: true,
         pageDots: true,
-        prevNextButtons: true,
+        prevNextButtons: false,
         freeScroll: freeScroll,
       });
 
