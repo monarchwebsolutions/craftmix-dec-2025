@@ -96,17 +96,39 @@ function waitForFlickityAndInit() {
         const cellEl = e.target.closest(".carousel-cell");
         if (!cellEl) return;
 
+        // Make this the active carousel
+        activeFlkty = flkty;
+
+        // If the cell is already mostly visible, do NOT move the carousel.
+        const viewport = flkty.viewport;
+        if (!viewport) return;
+
+        const vRect = viewport.getBoundingClientRect();
+        const cRect = cellEl.getBoundingClientRect();
+
+        // How much of the cell is visible horizontally?
+        const visibleLeft = Math.max(cRect.left, vRect.left);
+        const visibleRight = Math.min(cRect.right, vRect.right);
+        const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+        const totalWidth = Math.max(1, cRect.width);
+        const ratioVisible = visibleWidth / totalWidth;
+
+        // If at least 85% visible, leave it alone (prevents "snap left every tab")
+        if (ratioVisible >= 0.85) {
+          syncArrowDisabledState();
+          return;
+        }
+
+        // Otherwise, select it to bring it into view
         const cells = flkty.getCellElements();
         const idx = cells.indexOf(cellEl);
         if (idx < 0) return;
 
-        if (idx !== flkty.selectedIndex) {
-          flkty.select(idx, false, true);
-        }
+        flkty.select(idx, false, false); // animate into view (not instant)
 
-        // Keep arrows synced even if no event fires in some edge case
         syncArrowDisabledState();
       });
+
 
       window.addEventListener("resize", () => {
         // Re-sync because visible count changes on desktop
