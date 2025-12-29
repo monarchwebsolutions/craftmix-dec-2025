@@ -3,6 +3,16 @@ function waitForFlickityAndInit() {
     return setTimeout(waitForFlickityAndInit, 50);
   }
 
+  // Track last Tab direction so we do NOT trap Shift+Tab
+  let lastTabDirection = 'forward';
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Tab') lastTabDirection = e.shiftKey ? 'backward' : 'forward';
+    },
+    true
+  );
+
   function initializeCarousels(cellAlign, contain, freeScroll) {
     const carousels = document.querySelectorAll('.custom-carousel');
 
@@ -19,7 +29,6 @@ function waitForFlickityAndInit() {
 
       console.log(`Carousel ${index + 1} has ${flkty.slides.length} slides`);
 
-      // Scope external arrows to this carousel’s container if possible
       const container =
         el.closest('.custom-video-review-carousel-container') || document;
 
@@ -31,8 +40,9 @@ function waitForFlickityAndInit() {
         container.querySelector('.custom-carousel-next') ||
         document.querySelector('.custom-carousel-next');
 
-      // Compute how many slides are visible at once (used for disabled state + keyboard windowing)
+      // ----- Visible count + max index (for real "end" disabling) -----
       let visibleCount = 1;
+
       function computeVisibleCount() {
         try {
           const viewport = flkty.viewport;
@@ -43,12 +53,19 @@ function waitForFlickityAndInit() {
           }
 
           const viewportW = viewport.clientWidth || 0;
-          const cellOuterW = firstCell.size.outerWidth || firstCell.size.width || 1;
+          const cellOuterW =
+            firstCell.size.outerWidth || firstCell.size.width || 1;
 
           visibleCount = Math.max(1, Math.floor(viewportW / cellOuterW));
         } catch (e) {
           visibleCount = 1;
         }
+      }
+
+      function getMaxIndex() {
+        computeVisibleCount();
+        const total = flkty.slides.length; // one slide per cell in your setup
+        return Math.max(0, total - visibleCount);
       }
 
       function syncArrowDisabledState() {
@@ -62,10 +79,7 @@ function waitForFlickityAndInit() {
           return;
         }
 
-        computeVisibleCount();
-
-        const total = flkty.slides.length;
-        const maxIndex = Math.max(0, total - visibleCount);
+        const maxIndex = getMaxIndex();
 
         const isFirst = flkty.selectedIndex <= 0;
         const isLast = flkty.selectedIndex >= maxIndex;
@@ -77,6 +91,38 @@ function waitForFlickityAndInit() {
         nextBtn.classList.toggle('disabled', isLast);
       }
 
+      // ----- Arrow click behavior (clamped) -----
+      function goPrev() {
+        const target = Math.max(0, flkty.selectedIndex - 1);
+        if (target === flkty.selectedIndex) return;
+        flkty.select(target, false, false);
+      }
+
+      function goNext() {
+        const maxIndex = getMaxIndex();
+        const target = Math.min(maxIndex, flkty.selectedIndex + 1);
+        if (target === flkty.selectedIndex) return;
+        flkty.select(target, false, false);
+      }
+
+      if (prevBtn) {
+        prevBtn.addEventListener('click', (e) => {
+          // Keep focus on the button; do not redirect focus into the carousel.
+          e.preventDefault();
+          if (prevBtn.disabled) return;
+          goPrev();
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (nextBtn.disabled) return;
+          goNext();
+        });
+      }
+
+      // ----- Focus behavior -----
       function focusFirstFocusableInCell(cellEl) {
         if (!cellEl) return;
 
@@ -93,43 +139,34 @@ function waitForFlickityAndInit() {
         focusFirstFocusableInCell(cellEl);
       }
 
-      // External arrow wiring (NO "true" arg; that was causing overshoot/blank space issues)
-      if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-          if (prevBtn.disabled) return;
-          flkty.previous();
-
-          // After moving via arrow, keep focus behavior consistent if user is interacting with arrows via keyboard
-          flkty.once('settle', () => {
-            syncArrowDisabledState();
-          });
-        });
-      }
-
-      if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-          if (nextBtn.disabled) return;
-          flkty.next();
-
-          flkty.once('settle', () => {
-            syncArrowDisabledState();
-          });
-        });
-      }
-
-      // If the user tabs INTO the carousel (not already inside a cell), land on the selected/visible cell
+      // IMPORTANT:
+      // - Do NOT “auto focus into carousel” on Shift+Tab (prevents backwards trap).
+      // - Do NOT react to focus events originating from the external arrow buttons or Flickity dots/buttons.
       el.addEventListener('focusin', (e) => {
-        const insideCell = e.target.closest('.carousel-cell');
-        if (!insideCell) {
-          // Focus entered the carousel container (or something outside cells)
-          // Move focus to the selected cell’s first interactive element
-          focusSelectedCell();
+        // If your custom arrows are inside the carousel DOM, ignore them.
+        if (
+          e.target.closest('.custom-carousel-prev, .custom-carousel-next') ||
+          e.target.closest('.flickity-button') ||
+          e.target.closest('.flickity-page-dots') ||
+          e.target.closest('.dot')
+        ) {
           return;
         }
 
-        // KEY FIX:
-        // When tabbing within, only shift the carousel when the focused cell is OUTSIDE the current visible window.
-        // And when shifting, shift just enough so the focused cell becomes visible (not forced to far-left).
+        const insideCell = e.target.closest('.carousel-cell');
+
+        // If focus landed on the carousel root itself (tabindex=0),
+        // only “enter” the selected cell when tabbing FORWARD.
+        if (!insideCell) {
+          if (e.target === el && lastTabDirection === 'forward') {
+            focusSelectedCell();
+          }
+          return;
+        }
+
+        // When tabbing inside cells:
+        // Only shift when focused cell is outside the current visible window,
+        // and clamp target index so we never overshoot to blank space.
         const cellEl = insideCell;
         const cells = flkty.getCellElements();
         const focusedIndex = cells.indexOf(cellEl);
@@ -140,23 +177,25 @@ function waitForFlickityAndInit() {
         const leftMost = flkty.selectedIndex;
         const rightMost = flkty.selectedIndex + visibleCount - 1;
 
-        // If already within the visible window, do nothing (prevents constant sliding)
+        // Already visible -> do nothing
         if (focusedIndex >= leftMost && focusedIndex <= rightMost) return;
 
-        // If focus went LEFT of window, align to that cell
+        const maxIndex = getMaxIndex();
+
+        // Focus went left -> align left
         if (focusedIndex < leftMost) {
-          flkty.select(focusedIndex, false, false);
-          flkty.once('settle', syncArrowDisabledState);
+          const target = Math.max(0, Math.min(maxIndex, focusedIndex));
+          flkty.select(target, false, false);
           return;
         }
 
-        // If focus went RIGHT of window, shift so focused becomes the RIGHTMOST visible item
+        // Focus went right -> shift so focused becomes right-most visible item
         const targetIndex = Math.max(0, focusedIndex - (visibleCount - 1));
-        flkty.select(targetIndex, false, false);
-        flkty.once('settle', syncArrowDisabledState);
+        const target = Math.max(0, Math.min(maxIndex, targetIndex));
+        flkty.select(target, false, false);
       });
 
-      // Keep arrows + visibleCount updated
+      // Keep disabled state correct no matter how the carousel moves
       flkty.on('ready', () => {
         computeVisibleCount();
         syncArrowDisabledState();
@@ -169,22 +208,7 @@ function waitForFlickityAndInit() {
         syncArrowDisabledState();
       });
 
-      // Optional improvement:
-      // If user clicks arrows then immediately tabs, ensure Flickity is settled and focus begins on visible slide
-      if (prevBtn) {
-        prevBtn.addEventListener('keydown', (e) => {
-          if (e.key !== 'Tab') return;
-          flkty.once('settle', focusSelectedCell);
-        });
-      }
-      if (nextBtn) {
-        nextBtn.addEventListener('keydown', (e) => {
-          if (e.key !== 'Tab') return;
-          flkty.once('settle', focusSelectedCell);
-        });
-      }
-
-      // Initial state in case ready fires before buttons exist
+      // Initial pass
       computeVisibleCount();
       syncArrowDisabledState();
     });
