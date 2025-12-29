@@ -78,8 +78,8 @@ function waitForFlickityAndInit() {
       flkty.on('ready', syncArrowDisabledState);
       flkty.on('change', syncArrowDisabledState);
       flkty.on('settle', syncArrowDisabledState);
-
-      // Make focus "pull" the carousel to the focused cell
+    });
+    // Make focus "pull" the carousel to the focused cell
       carouselEl.addEventListener('focusin', (e) => {
         const cellEl = e.target.closest('.carousel-cell');
         if (!cellEl) return;
@@ -93,7 +93,6 @@ function waitForFlickityAndInit() {
           flkty.select(index, false, true); // (index, isWrapped, isInstant)
         }
       });
-    });
     
   }
 
