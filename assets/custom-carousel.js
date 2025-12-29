@@ -21,9 +21,9 @@ function waitForFlickityAndInit() {
       console.log(`Carousel ${index + 1} has ${flkty.slides.length} slides`);
 
       
-  const carouselEl = root.querySelector('[data-carousel]');
-  const prevBtn = root.querySelector('.custom-carousel-prev');
-  const nextBtn = root.querySelector('.custom-carousel-next');
+  const carouselEl = document.querySelector('[data-carousel]');
+  const prevBtn = document.querySelector('.custom-carousel-prev');
+  const nextBtn = document.querySelector('.custom-carousel-next');
 
       // External arrow wiring
       prevBtn.addEventListener('click', () => flkty.previous(true));
