@@ -55,10 +55,24 @@ function waitForFlickityAndInit() {
       // }
 
       function syncArrowDisabledState() {
-        if (flkty.options.wrapAround) return; // never disabled in loop mode
+        if (flkty.options.wrapAround) {
+          // Ensure arrows are enabled in loop mode
+          prevBtn.disabled = false;
+          nextBtn.disabled = false;
 
-        prevBtn.disabled = flkty.selectedIndex === 0;
-        nextBtn.disabled = flkty.selectedIndex === flkty.slides.length - 1;
+          prevBtn.classList.remove('disabled');
+          nextBtn.classList.remove('disabled');
+          return;
+        }
+
+        const isFirst = flkty.selectedIndex === 0;
+        const isLast = flkty.selectedIndex === flkty.slides.length - 1;
+
+        prevBtn.disabled = isFirst;
+        nextBtn.disabled = isLast;
+
+        prevBtn.classList.toggle('disabled', isFirst);
+        nextBtn.classList.toggle('disabled', isLast);
       }
 
       flkty.on('ready', syncArrowDisabledState);
