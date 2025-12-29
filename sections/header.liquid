@@ -1,4 +1,4 @@
-<script>
+{% comment %} <script>
 // Wrap in a DOMContentLoaded event in case script is in the <head>
 document.addEventListener('DOMContentLoaded', function () {
   const cartIcon = document.querySelector('a#cart-icon');
@@ -161,9 +161,9 @@ document.addEventListener('keydown', (e) => {
     }
   });
 }, true);
-</script>
+</script> {% endcomment %}
 
-
+<script src="{{ 'header-custom.js' | asset_url }}" defer></script>
 {%- liquid
   assign areas = "heading navigation icons"
   assign areas2 =  ". . ."
@@ -625,7 +625,7 @@ document.addEventListener('keydown', (e) => {
     }
   </script>
 {%- endif -%}
-<script>
+{% comment %} <script>
 // Trap focus in mobile menu
 (() => {
   const FOCUSABLE = [
@@ -1200,7 +1200,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tries < 40) setTimeout(retry, 250);
   })();
 })();
-</script>
+</script> {% endcomment %}
 
 {% schema %}
 {
