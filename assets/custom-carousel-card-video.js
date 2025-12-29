@@ -71,6 +71,13 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleVideoPlay();
     });
 
+    video.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault(); // prevent page scroll on Space
+        toggleVideoPlayback(video);
+      }
+    });
+
     playBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleVideoPlay();
