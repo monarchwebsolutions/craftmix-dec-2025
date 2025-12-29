@@ -1192,6 +1192,12 @@
   position:relative;
 }
 
+@media screen and (max-width:768px){
+  .custom-video-review-carousel-nav{
+    bottom:-364px;
+  }
+}
+
 .play-btn {
   position: absolute;
   top: 50%;
