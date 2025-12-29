@@ -1184,24 +1184,6 @@
   object-fit: cover;
 }
 
-.custom-video-review-carousel-container {
-  position: relative;
-  overflow-x: hidden; /* prevents any horizontal scroll bleed */
-}
-
-/* Make the carousel itself not create weird overflow */
-.custom-video-review-carousel-container .custom-carousel {
-  overflow: hidden;
-}
-
-/* Flickity viewport should not create page horizontal scroll */
-.custom-video-review-carousel-container .flickity-viewport {
-  overflow: hidden;
-}
-
-
-
-
 .play-btn {
   position: absolute;
   top: 50%;
