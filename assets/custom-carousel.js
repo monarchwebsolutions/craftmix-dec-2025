@@ -3,6 +3,16 @@ function waitForFlickityAndInit() {
     return setTimeout(waitForFlickityAndInit, 50);
   }
 
+  // Track Tab direction to avoid Shift+Tab traps
+  let lastTabDirection = 'forward';
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Tab') lastTabDirection = e.shiftKey ? 'backward' : 'forward';
+    },
+    true
+  );
+
   function initializeCarousels(cellAlign, contain, freeScroll) {
     const carousels = document.querySelectorAll('.custom-carousel');
 
@@ -13,71 +23,109 @@ function waitForFlickityAndInit() {
         contain: contain,
         fullscreen: true,
         pageDots: true,
-        prevNextButtons: false, // we use external arrows
+        prevNextButtons: false,
         freeScroll: freeScroll,
       });
 
       console.log(`Carousel ${index + 1} has ${flkty.slides.length} slides`);
 
-      // Scope external arrows to this carousel’s container if possible
-      const container = el.closest('.custom-video-review-carousel-container') || document;
+      const container =
+        el.closest('.custom-video-review-carousel-container') || document;
+
       const prevBtn =
-        container.querySelector('.custom-carousel-prev') || document.querySelector('.custom-carousel-prev');
+        container.querySelector('.custom-carousel-prev') ||
+        document.querySelector('.custom-carousel-prev');
+
       const nextBtn =
-        container.querySelector('.custom-carousel-next') || document.querySelector('.custom-carousel-next');
+        container.querySelector('.custom-carousel-next') ||
+        document.querySelector('.custom-carousel-next');
 
-      // -----------------------------
-      // Helpers: compute true maxIndex
-      // -----------------------------
-      function getMaxIndex() {
-        // Maximum cell index that can be selected WITHOUT leaving blank space on the right.
-        // Uses Flickity’s actual geometry (cell x positions + slideable width).
-        try {
-          const cells = flkty.cells || [];
-          if (!cells.length || !flkty.size) return 0;
+      // ---- Visible window math (robust) ----
+      let visibleCount = 1;
 
-          const lastLeft = Math.max(0, flkty.slideableWidth - flkty.size.innerWidth);
-
-          // Find last cell whose x <= lastLeft (small tolerance)
-          let max = 0;
-          const EPS = 2;
-          for (let i = 0; i < cells.length; i++) {
-            if (cells[i].x <= lastLeft + EPS) max = i;
-          }
-          return max;
-        } catch (e) {
-          return 0;
-        }
+      function getCellOuterWidth() {
+        const firstCell = flkty.cells && flkty.cells[0];
+        if (!firstCell || !firstCell.size) return 0;
+        return firstCell.size.outerWidth || firstCell.size.width || 0;
       }
 
-      // -----------------------------
-      // Arrow disabled state
-      // -----------------------------
+      function computeVisibleCount() {
+        const viewport = flkty.viewport;
+        const cellOuterW = getCellOuterWidth();
+
+        if (!viewport || !cellOuterW) {
+          visibleCount = 1;
+          return visibleCount;
+        }
+
+        const viewportW = viewport.clientWidth || 0;
+        visibleCount = Math.max(1, Math.round(viewportW / cellOuterW));
+        return visibleCount;
+      }
+
+      function getMaxIndex() {
+        const total = flkty.cells ? flkty.cells.length : 0;
+        const vis = computeVisibleCount();
+        return Math.max(0, total - vis);
+      }
+
+      // ---- Keep focus on arrows while using them ----
+      let arrowLock = null; // 'prev' | 'next' | null
+      let arrowLockTimer = null;
+
+      function lockArrow(which) {
+        arrowLock = which;
+        if (arrowLockTimer) clearTimeout(arrowLockTimer);
+        // brief lock window so carousel focus handlers don't steal focus mid-transition
+        arrowLockTimer = setTimeout(() => (arrowLock = null), 600);
+      }
+
+      function safeFocus(elm) {
+        if (!elm) return;
+        // ensure focus persists after Flickity DOM updates
+        requestAnimationFrame(() => {
+          try {
+            elm.focus({ preventScroll: true });
+          } catch (e) {}
+        });
+      }
+
+      // ---- Disabled state (deferred + stable) ----
+      function setDisabled(btn, disabled) {
+        if (!btn) return;
+        btn.disabled = !!disabled;
+        btn.classList.toggle('disabled', !!disabled);
+        // If it becomes disabled while focused, keep focus there (do not let it "fall through")
+        if (disabled && document.activeElement === btn) safeFocus(btn);
+      }
+
       function syncArrowDisabledState() {
         if (!prevBtn || !nextBtn) return;
 
         if (flkty.options.wrapAround) {
-          prevBtn.disabled = false;
-          nextBtn.disabled = false;
-          prevBtn.classList.remove('disabled');
-          nextBtn.classList.remove('disabled');
+          setDisabled(prevBtn, false);
+          setDisabled(nextBtn, false);
           return;
         }
 
         const maxIndex = getMaxIndex();
-        const isFirst = flkty.selectedIndex <= 0;
-        const isLast = flkty.selectedIndex >= maxIndex;
+        const idx = flkty.selectedIndex;
 
-        prevBtn.disabled = isFirst;
-        nextBtn.disabled = isLast;
-
-        prevBtn.classList.toggle('disabled', isFirst);
-        nextBtn.classList.toggle('disabled', isLast);
+        setDisabled(prevBtn, idx <= 0);
+        setDisabled(nextBtn, idx >= maxIndex);
       }
 
-      // -----------------------------
-      // External arrow actions (clamped)
-      // -----------------------------
+      // Flickity sometimes reports transient indices during animation.
+      // Only finalize disabled states on 'settle' (authoritative).
+      function syncOnSettle() {
+        syncArrowDisabledState();
+
+        // If the user is navigating via arrow buttons, preserve focus there.
+        if (arrowLock === 'prev' && prevBtn) safeFocus(prevBtn);
+        if (arrowLock === 'next' && nextBtn) safeFocus(nextBtn);
+      }
+
+      // ---- Arrow movement (clamped, no overshoot) ----
       function goPrev() {
         const target = Math.max(0, flkty.selectedIndex - 1);
         if (target === flkty.selectedIndex) return;
@@ -93,137 +141,133 @@ function waitForFlickityAndInit() {
 
       if (prevBtn) {
         prevBtn.addEventListener('click', (e) => {
-          if (prevBtn.disabled) return;
+          e.preventDefault();
+          if (prevBtn.disabled) {
+            safeFocus(prevBtn);
+            return;
+          }
+          lockArrow('prev');
           goPrev();
-          // keep focus on the button
-          prevBtn.focus({ preventScroll: true });
+          safeFocus(prevBtn);
         });
 
-        // Ensure Enter/Space keeps focus
         prevBtn.addEventListener('keydown', (e) => {
+          // Support Space/Enter on buttons reliably (some themes interfere)
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            if (prevBtn.disabled) return;
-            goPrev();
-            prevBtn.focus({ preventScroll: true });
+            prevBtn.click();
           }
         });
       }
 
       if (nextBtn) {
         nextBtn.addEventListener('click', (e) => {
-          if (nextBtn.disabled) return;
+          e.preventDefault();
+          if (nextBtn.disabled) {
+            safeFocus(nextBtn);
+            return;
+          }
+          lockArrow('next');
           goNext();
-          nextBtn.focus({ preventScroll: true });
+          safeFocus(nextBtn);
         });
 
         nextBtn.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            if (nextBtn.disabled) return;
-            goNext();
-            nextBtn.focus({ preventScroll: true });
+            nextBtn.click();
           }
         });
       }
 
-      // -----------------------------
-      // Focus behavior: only shift when needed,
-      // and clamp to true maxIndex to prevent end blank space.
-      // -----------------------------
-      el.addEventListener('focusin', (e) => {
-        const cellEl = e.target.closest('.carousel-cell');
+      // ---- Focus behavior inside carousel ----
+      function focusFirstFocusableInCell(cellEl) {
         if (!cellEl) return;
+        const focusable = cellEl.querySelector(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable) focusable.focus({ preventScroll: true });
+      }
 
+      function focusSelectedCell() {
+        const cells = flkty.getCellElements();
+        const cellEl = cells && cells[flkty.selectedIndex];
+        focusFirstFocusableInCell(cellEl);
+      }
+
+      el.addEventListener('focusin', (e) => {
+        // While user is operating arrows, do not let carousel focus handlers run
+        if (arrowLock) return;
+
+        // Ignore focus from dots / flickity internal buttons
+        if (
+          e.target.closest('.custom-carousel-prev, .custom-carousel-next') ||
+          e.target.closest('.flickity-button') ||
+          e.target.closest('.flickity-page-dots') ||
+          e.target.closest('.dot')
+        ) {
+          return;
+        }
+
+        const insideCell = e.target.closest('.carousel-cell');
+
+        // If focus landed on the carousel root itself (tabindex=0),
+        // only “enter” the selected cell when tabbing FORWARD.
+        if (!insideCell) {
+          if (e.target === el && lastTabDirection === 'forward') {
+            focusSelectedCell();
+          }
+          return;
+        }
+
+        const cellEl = insideCell;
         const cells = flkty.getCellElements();
         const focusedIndex = cells.indexOf(cellEl);
         if (focusedIndex < 0) return;
 
-        // Determine current visible window using geometry.
-        // Leftmost is flkty.selectedIndex. Visible end is approximated by viewport width.
-        // We’ll compute a targetIndex that ensures focused cell is not offscreen to the right.
+        const vis = computeVisibleCount();
+
+        const leftMost = flkty.selectedIndex;
+        const rightMost = flkty.selectedIndex + vis - 1;
+
+        // If already within visible window, do nothing
+        if (focusedIndex >= leftMost && focusedIndex <= rightMost) return;
+
         const maxIndex = getMaxIndex();
 
-        // If focused is current or earlier than selected, snap left to it.
-        if (focusedIndex < flkty.selectedIndex) {
+        if (focusedIndex < leftMost) {
           const target = Math.max(0, Math.min(maxIndex, focusedIndex));
-          if (target !== flkty.selectedIndex) flkty.select(target, false, false);
+          flkty.select(target, false, false);
           return;
         }
 
-        // If focused is to the right, shift just enough so it becomes visible.
-        // Use cell positions: if focused cell's x is beyond current left + viewport width, shift.
-        try {
-          const viewportW = flkty.size?.innerWidth || flkty.viewport?.clientWidth || 0;
-          const leftX = flkty.x * -1; // current left scroll position (positive)
-          const focusedCell = flkty.cells[focusedIndex];
-          const focusedLeft = focusedCell?.x ?? 0;
-          const focusedRight = focusedLeft + (focusedCell?.size?.outerWidth || focusedCell?.size?.width || 0);
-
-          const viewLeft = leftX;
-          const viewRight = leftX + viewportW;
-
-          // If fully in view, do nothing.
-          if (focusedLeft >= viewLeft - 2 && focusedRight <= viewRight + 2) return;
-
-          // If off to the right, shift so the focused cell becomes the rightmost fully visible.
-          // Find the leftmost index such that focusedRight <= (cells[left].x + viewportW)
-          let targetIndex = flkty.selectedIndex;
-
-          for (let left = focusedIndex; left >= 0; left--) {
-            const leftCell = flkty.cells[left];
-            const leftCellX = leftCell?.x ?? 0;
-            if (focusedRight <= leftCellX + viewportW + 2) {
-              targetIndex = left;
-            } else {
-              break;
-            }
-          }
-
-          const clamped = Math.max(0, Math.min(maxIndex, targetIndex));
-          if (clamped !== flkty.selectedIndex) flkty.select(clamped, false, false);
-        } catch (err) {
-          // fallback: at least clamp to focused index (or max)
-          const target = Math.max(0, Math.min(maxIndex, focusedIndex));
-          if (target !== flkty.selectedIndex) flkty.select(target, false, false);
-        }
+        const targetIndex = Math.max(0, focusedIndex - (vis - 1));
+        const target = Math.max(0, Math.min(maxIndex, targetIndex));
+        flkty.select(target, false, false);
       });
 
-      // -----------------------------
-      // Keep state synced (including when tabbing causes selects)
-      // -----------------------------
-      function syncOnSettle() {
-        syncArrowDisabledState();
-      }
-
+      // ---- Event wiring (use settle for stable end detection) ----
       flkty.on('ready', () => {
+        computeVisibleCount();
         syncArrowDisabledState();
       });
 
+      // Avoid disabling mid-animation; keep arrows enabled until settle recalculates.
       flkty.on('select', () => {
-        syncArrowDisabledState();
+        // Keep focus on arrow if user is arrowing
+        if (arrowLock === 'prev' && prevBtn) safeFocus(prevBtn);
+        if (arrowLock === 'next' && nextBtn) safeFocus(nextBtn);
       });
 
-      flkty.on('settle', () => {
-        // Hard clamp: prevents the rare “blank space at end” drift case.
-        const maxIndex = getMaxIndex();
-        if (flkty.selectedIndex > maxIndex) {
-          flkty.select(maxIndex, false, true);
-          return;
-        }
-        syncOnSettle();
-      });
+      flkty.on('settle', syncOnSettle);
 
       window.addEventListener('resize', () => {
-        // After resize, clamp and resync
-        const maxIndex = getMaxIndex();
-        if (flkty.selectedIndex > maxIndex) {
-          flkty.select(maxIndex, false, true);
-        }
+        computeVisibleCount();
         syncArrowDisabledState();
       });
 
-      // Initial safety
+      // Initial pass
+      computeVisibleCount();
       syncArrowDisabledState();
     });
   }
