@@ -78,6 +78,20 @@ function waitForFlickityAndInit() {
       flkty.on('ready', syncArrowDisabledState);
       flkty.on('change', syncArrowDisabledState);
       flkty.on('settle', syncArrowDisabledState);
+
+      // Make focus "pull" the carousel to the focused cell
+      carouselEl.addEventListener('focusin', (e) => {
+        const cellEl = e.target.closest('.carousel-cell');
+        if (!cellEl) return;
+
+        const cells = flkty.getCellElements();
+        const index = cells.indexOf(cellEl);
+        if (index < 0) return;
+
+        // If the focused cell isn't the selected one, select it
+        if (index !== flkty.selectedIndex) {
+          flkty.select(index, false, true); // (index, isWrapped, isInstant)
+        }
     });
   }
 
