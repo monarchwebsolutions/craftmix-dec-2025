@@ -17,7 +17,7 @@
 
 #rebuy-cart-close:focus-visible {
   outline: 3px solid #e10600 !important; /* accessible red */
-  outline-offset: 3px;
+  outline-offset: 1px;
 }
 
 .rebuy-cart__progress-bar-meter-fill::focus-visible{
@@ -44,7 +44,7 @@
 .rebuy-cart__flyout button:focus-visible,
 .rebuy-cart .rebuy-cart__flyout .rebuy-cart__flyout-empty-cart a:focus-visible{
   outline: 3px solid #e10600 !important; /* accessible red */
-  outline-offset: 3px;
+  outline-offset: 1px;
 }
 
 .tool-tip-left a:focus-visible .tool-tip-image{
