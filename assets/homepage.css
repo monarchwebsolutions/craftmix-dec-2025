@@ -1189,27 +1189,6 @@
   overflow-x: hidden;
 }
 
-/* Place both arrows in the top-right “header” area */
-.custom-video-review-carousel-container .flickity-prev-next-button {
-  position: absolute !important;
-  top: 28px !important;            /* adjust to match design */
-  width: 70px;                     /* optional: match your design */
-  height: 70px;                    /* optional */
-  transform: none !important;      /* IMPORTANT: don’t translateY(-50%) anymore */
-  z-index: 20 !important;
-}
-
-/* Right arrow */
-.custom-video-review-carousel-container .flickity-prev-next-button.next {
-  right: 28px !important;          /* adjust */
-}
-
-/* Left arrow sits to the left of the right arrow */
-.custom-video-review-carousel-container .flickity-prev-next-button.previous {
-  right: 120px !important;         /* = next right + button width + gap */
-}
-
-
 .play-btn {
   position: absolute;
   top: 50%;
