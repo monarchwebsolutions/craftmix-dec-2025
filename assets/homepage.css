@@ -150,9 +150,9 @@
 }
 
 .mute-button {
+  bottom: 5.375rem; /* 86px */
+  right: 0.5rem; /* 8px */
   position: absolute;
-  bottom: 0.625rem; /* 10px */
-  right: 0.625rem; /* 10px */
   background: none;
   border: none;
   padding: 0;
@@ -205,9 +205,7 @@
 }
 
 #ec-video-slider .mute-button img {
-  bottom: 5.375rem; /* 86px */
-  right: 0.5rem; /* 8px */
-  position: relative;
+  
 }
 
 #ec-video-slider .splide__arrow {
