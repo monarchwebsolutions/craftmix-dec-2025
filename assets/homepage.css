@@ -1189,6 +1189,33 @@
   overflow-x: hidden;
 }
 
+.custom-video-review-carousel-container {
+  position: relative;
+}
+
+/* Ensure viewport doesn’t clip the buttons */
+.custom-video-review-carousel-container .flickity-viewport {
+  overflow: visible;
+}
+
+/* Base arrow button styling/positioning */
+.custom-video-review-carousel-container .flickity-prev-next-button {
+  position: absolute;
+  top: 20px;          /* adjust */
+  z-index: 50;
+}
+
+/* Right arrow */
+.custom-video-review-carousel-container .flickity-prev-next-button.next {
+  right: 20px;        /* adjust */
+}
+
+/* Left arrow */
+.custom-video-review-carousel-container .flickity-prev-next-button.previous {
+  right: 110px;       /* adjust spacing between them */
+}
+
+
 .play-btn {
   position: absolute;
   top: 50%;
