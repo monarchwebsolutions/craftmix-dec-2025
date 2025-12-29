@@ -1186,7 +1186,7 @@
 
 .custom-video-review-carousel-container {
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 .custom-video-review-carousel-nav{
   position:relative;
