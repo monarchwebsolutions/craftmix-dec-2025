@@ -17,6 +17,10 @@ function waitForFlickityAndInit() {
     const carousels = document.querySelectorAll('.custom-carousel');
 
     carousels.forEach((el, index) => {
+      // Prevent double init (theme editor / script duplication / etc.)
+      if (el.dataset.customCarouselInitialized === 'true') return;
+      el.dataset.customCarouselInitialized = 'true';
+
       const flkty = new Flickity(el, {
         cellAlign: cellAlign,
         wrapAround: false,
@@ -29,16 +33,35 @@ function waitForFlickityAndInit() {
 
       console.log(`Carousel ${index + 1} has ${flkty.slides.length} slides`);
 
-      const container =
-        el.closest('.custom-video-review-carousel-container') || document;
+      // ---- Find the correct arrow buttons for THIS carousel (no global fallback) ----
+      function findArrowButtonsForCarousel(carouselEl) {
+        let node = carouselEl;
 
-      const prevBtn =
-        container.querySelector('.custom-carousel-prev') ||
-        document.querySelector('.custom-carousel-prev');
+        while (node && node !== document.documentElement) {
+          if (node.querySelector) {
+            const prev = node.querySelector('.custom-carousel-prev');
+            const next = node.querySelector('.custom-carousel-next');
 
-      const nextBtn =
-        container.querySelector('.custom-carousel-next') ||
-        document.querySelector('.custom-carousel-next');
+            // Only accept a scope that contains BOTH buttons
+            if (prev && next) {
+              return { prev, next, scope: node };
+            }
+          }
+          node = node.parentElement;
+        }
+
+        return { prev: null, next: null, scope: null };
+      }
+
+      const { prev: prevBtn, next: nextBtn } = findArrowButtonsForCarousel(el);
+
+      if (!prevBtn || !nextBtn) {
+        console.warn(
+          'custom-carousel.js: Could not find scoped prev/next buttons for this carousel. ' +
+            'Ensure the carousel and its buttons share a common ancestor wrapper.',
+          el
+        );
+      }
 
       // ---- Visible window math (robust) ----
       let visibleCount = 1;
