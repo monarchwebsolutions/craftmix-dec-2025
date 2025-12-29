@@ -14,19 +14,14 @@ function waitForFlickityAndInit() {
         contain: contain,
         fullscreen: true,
         pageDots: true,
-        prevNextButtons: false,
+        prevNextButtons: true,
         freeScroll: freeScroll,
       });
 
       console.log(`Carousel ${index + 1} has ${flkty.slides.length} slides`);
-      
-      const carouselEl = document.querySelector('[data-carousel]');
-      const prevBtn = document.querySelector('.custom-carousel-prev');
-      const nextBtn = document.querySelector('.custom-carousel-next');
 
-      // External arrow wiring
-      prevBtn.addEventListener('click', () => flkty.previous(true));
-      nextBtn.addEventListener('click', () => flkty.next(true));
+      let nextButton = el.querySelector(".flickity-button.next");
+      let prevButton = el.querySelector(".flickity-button.previous");
 
       function getVisibleSlides() {
         let visibleWidth = flkty.viewport.clientWidth;
@@ -34,67 +29,26 @@ function waitForFlickityAndInit() {
         return Math.floor(visibleWidth / cellWidth);
       }
 
-      // flkty.on("select", updateButtonStates);
-      // updateButtonStates();
+      flkty.on("select", updateButtonStates);
+      updateButtonStates();
 
-      // function updateButtonStates() {
-      //   const totalSlides = flkty.slides.length;
-      //   const visibleSlides = getVisibleSlides();
-      //   const maxIndex = totalSlides - visibleSlides;
+      function updateButtonStates() {
+        const totalSlides = flkty.slides.length;
+        const visibleSlides = getVisibleSlides();
+        const maxIndex = totalSlides - visibleSlides;
 
-      //   if (prevBtn) {
-      //     prevBtn.classList.toggle("disabled", flkty.selectedIndex === 0);
-      //   }
-
-      //   if (nextBtn) {
-      //     nextBtn.classList.toggle(
-      //       "disabled",
-      //       flkty.selectedIndex >= maxIndex
-      //     );
-      //   }
-      // }
-
-      function syncArrowDisabledState() {
-        if (flkty.options.wrapAround) {
-          // Ensure arrows are enabled in loop mode
-          prevBtn.disabled = false;
-          nextBtn.disabled = false;
-
-          prevBtn.classList.remove('disabled');
-          nextBtn.classList.remove('disabled');
-          return;
+        if (prevButton) {
+          prevButton.classList.toggle("disabled", flkty.selectedIndex === 0);
         }
 
-        const isFirst = flkty.selectedIndex === 0;
-        const isLast = flkty.selectedIndex === flkty.slides.length - 1;
-
-        prevBtn.disabled = isFirst;
-        nextBtn.disabled = isLast;
-
-        prevBtn.classList.toggle('disabled', isFirst);
-        nextBtn.classList.toggle('disabled', isLast);
+        if (nextButton) {
+          nextButton.classList.toggle(
+            "disabled",
+            flkty.selectedIndex >= maxIndex
+          );
+        }
       }
-
-      flkty.on('ready', syncArrowDisabledState);
-      flkty.on('change', syncArrowDisabledState);
-      flkty.on('settle', syncArrowDisabledState);
-
-      // Make focus "pull" the carousel to the focused cell
-      carouselEl.addEventListener('focusin', (e) => {
-        const cellEl = e.target.closest('.carousel-cell');
-        if (!cellEl) return;
-
-        const cells = flkty.getCellElements();
-        const index = cells.indexOf(cellEl);
-        if (index < 0) return;
-
-        // If the focused cell isn't the selected one, select it
-        if (index !== flkty.selectedIndex) {
-          flkty.select(index, false, true); // (index, isWrapped, isInstant)
-        }
-      });
     });
-    
   }
 
   function initializeOnLoad() {
