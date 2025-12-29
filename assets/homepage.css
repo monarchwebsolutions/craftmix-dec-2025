@@ -1184,10 +1184,6 @@
   object-fit: cover;
 }
 
-.custom-video-review-carousel-container {
-  position: relative;
-  overflow: hidden;
-}
 .custom-video-review-carousel-nav{
   position:relative;
 }
@@ -1487,6 +1483,7 @@
   margin-bottom: 60px;
   position: relative;
   padding-top: 86px; /* Add padding to make room for the buttons */
+  overflow: hidden;
 }
 
 .custom-video-review-carousel-cta-btn:hover {
@@ -1836,6 +1833,7 @@
   margin-bottom: 60px;
   position: relative;
   padding-top: 86px; /* Add padding to make room for Flickity the buttons */
+
 }
 
 .custom-blog-carousel-subheading {
