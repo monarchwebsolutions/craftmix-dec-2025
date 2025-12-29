@@ -59,12 +59,7 @@ function waitForFlickityAndInit() {
         }
 
         const viewportW = viewport.clientWidth || 0;
-
-        // IMPORTANT:
-        // Use floor (not round) to avoid overestimating how many cells are fully visible.
-        // Add a tiny epsilon to protect against subpixel rounding like 2.999999 -> 2.
-        visibleCount = Math.max(1, Math.floor((viewportW + 1) / cellOuterW));
-
+        visibleCount = Math.max(1, Math.round(viewportW / cellOuterW));
         return visibleCount;
       }
 
