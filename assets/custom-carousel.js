@@ -96,38 +96,53 @@ function waitForFlickityAndInit() {
         const cellEl = e.target.closest(".carousel-cell");
         if (!cellEl) return;
 
-        // Make this the active carousel
-        activeFlkty = flkty;
+        // Helper: how visible is this cell inside the Flickity viewport?
+        const getVisibleRatio = () => {
+          const viewport = flkty.viewport;
+          if (!viewport) return 1;
 
-        // If the cell is already mostly visible, do NOT move the carousel.
-        const viewport = flkty.viewport;
-        if (!viewport) return;
+          const vRect = viewport.getBoundingClientRect();
+          const cRect = cellEl.getBoundingClientRect();
 
-        const vRect = viewport.getBoundingClientRect();
-        const cRect = cellEl.getBoundingClientRect();
+          const visibleLeft = Math.max(cRect.left, vRect.left);
+          const visibleRight = Math.min(cRect.right, vRect.right);
+          const visibleWidth = Math.max(0, visibleRight - visibleLeft);
 
-        // How much of the cell is visible horizontally?
-        const visibleLeft = Math.max(cRect.left, vRect.left);
-        const visibleRight = Math.min(cRect.right, vRect.right);
-        const visibleWidth = Math.max(0, visibleRight - visibleLeft);
-        const totalWidth = Math.max(1, cRect.width);
-        const ratioVisible = visibleWidth / totalWidth;
+          return visibleWidth / Math.max(1, cRect.width);
+        };
 
-        // If at least 85% visible, leave it alone (prevents "snap left every tab")
-        if (ratioVisible >= 0.85) {
+        const THRESHOLD = 0.85;
+
+        // If already mostly visible, do nothing
+        if (getVisibleRatio() >= THRESHOLD) {
           syncArrowDisabledState();
           return;
         }
 
-        // Otherwise, select it to bring it into view
         const cells = flkty.getCellElements();
         const idx = cells.indexOf(cellEl);
         if (idx < 0) return;
 
-        flkty.select(idx, false, false); // animate into view (not instant)
+        // First: animate into view (smoother UX)
+        flkty.select(idx, false, false);
 
-        syncArrowDisabledState();
+        // Second: after layout updates, verify it actually became visible.
+        // If not, do a single instant correction (fixes the "first time it jumps wrong" bug).
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (getVisibleRatio() < THRESHOLD) {
+              flkty.select(idx, false, true); // instant correction
+            }
+            syncArrowDisabledState();
+          });
+        });
+
+        // Also resync on settle (covers slow devices / heavy pages)
+        flkty.once("settle", () => {
+          syncArrowDisabledState();
+        });
       });
+
 
 
       window.addEventListener("resize", () => {
