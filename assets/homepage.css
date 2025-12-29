@@ -1932,12 +1932,14 @@
 @media (max-width: 768px) {
   .custom-blog-carousel-subheading {
     margin-bottom: 14px;
- }
+  }  
 
   .custom-blog-carousel-heading {
     font-size: 40px;
     letter-spacing: -1.05px; 
     line-height: 40px;
   }  
-
+  .custom-blog-carousel-section .custom-video-review-carousel-nav {
+      bottom: -280px;
+  }
 }
