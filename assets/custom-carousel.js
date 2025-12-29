@@ -34,16 +34,35 @@ function waitForFlickityAndInit() {
         return Math.floor(visibleWidth / cellWidth);
       }
 
-      // Optional: keep disabled state accurate when wrapAround is false
-  function syncArrowDisabledState() {
-    if (flkty.options.wrapAround) return; // never disabled in loop mode
+      // flkty.on("select", updateButtonStates);
+      // updateButtonStates();
 
-    prevBtn.disabled = flkty.selectedIndex === 0;
-    nextBtn.disabled = flkty.selectedIndex === flkty.slides.length - 1;
-  }
+      // function updateButtonStates() {
+      //   const totalSlides = flkty.slides.length;
+      //   const visibleSlides = getVisibleSlides();
+      //   const maxIndex = totalSlides - visibleSlides;
 
-  flkty.on('ready', syncArrowDisabledState);
-  flkty.on('change', syncArrowDisabledState);
+      //   if (prevBtn) {
+      //     prevBtn.classList.toggle("disabled", flkty.selectedIndex === 0);
+      //   }
+
+      //   if (nextBtn) {
+      //     nextBtn.classList.toggle(
+      //       "disabled",
+      //       flkty.selectedIndex >= maxIndex
+      //     );
+      //   }
+      // }
+
+      function syncArrowDisabledState() {
+        if (flkty.options.wrapAround) return; // never disabled in loop mode
+
+        prevBtn.disabled = flkty.selectedIndex === 0;
+        nextBtn.disabled = flkty.selectedIndex === flkty.slides.length - 1;
+      }
+
+      flkty.on('ready', syncArrowDisabledState);
+      flkty.on('change', syncArrowDisabledState);
     });
   }
 
