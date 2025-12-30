@@ -57,8 +57,6 @@
         pagination.__a11yObserverBound = true;
 
         const mo = new MutationObserver(() => {
-          // Splide sometimes rewrites these after we set them.
-          // Run after DOM settles.
           requestAnimationFrame(forcePaginationTabbable);
         });
 
@@ -133,7 +131,55 @@
       };
 
       // -----------------------------
-      // Keep videos in sync with active slide
+      // A11y: Active video class + tabindex management
+      // -----------------------------
+      function setActiveVideoTabIndex() {
+        const root = document.querySelector('#videoCarousel');
+        if (!root) return;
+
+        // Only target real slides (ignore clones created by loop mode)
+        const slides = root.querySelectorAll('.splide__slide:not(.splide__slide--clone)');
+        if (!slides.length) return;
+
+        slides.forEach((slide) => {
+          const video = slide.querySelector('video.carousel-video');
+          if (!video) return;
+
+          if (slide.classList.contains('is-active')) {
+            video.classList.add('is-active-video');
+            video.setAttribute('tabindex', '0');
+          } else {
+            video.classList.remove('is-active-video');
+            video.setAttribute('tabindex', '-1');
+          }
+        });
+      }
+
+      // If focus is on a now-inactive video, move it to the active one after slide change
+      function refocusToActiveVideoIfNeeded() {
+        const root = document.querySelector('#videoCarousel');
+        if (!root) return;
+
+        const activeSlide = root.querySelector('.splide__slide.is-active:not(.splide__slide--clone)');
+        if (!activeSlide) return;
+
+        const activeVideo = activeSlide.querySelector('video.carousel-video');
+        if (!activeVideo) return;
+
+        const focused = document.activeElement;
+        if (!focused) return;
+
+        // If focus is inside the carousel but not on the active video, and it's currently on an inactive video, fix it
+        if (root.contains(focused)) {
+          const focusedVideo = focused.closest && focused.closest('video.carousel-video');
+          if (focusedVideo && focusedVideo !== activeVideo) {
+            activeVideo.focus();
+          }
+        }
+      }
+
+      // -----------------------------
+      // Keep videos in sync with active slide (your existing behavior)
       // -----------------------------
       const syncVideosToActiveSlide = () => {
         const slides = videoSlider?.Components?.Elements?.slides || [];
@@ -151,7 +197,9 @@
             if (playBtn) playBtn.style.display = 'none';
           } else {
             video.pause();
-            try { video.currentTime = 0; } catch (e) {}
+            try {
+              video.currentTime = 0;
+            } catch (e) {}
             if (playBtn) playBtn.style.display = 'block';
           }
         });
@@ -180,12 +228,14 @@
           button.addEventListener('click', toggleMute);
         });
 
-        // Pagination: force tabindex=0 and keep it that way
         requestAnimationFrame(() => {
           forcePaginationTabbable();
           bindPaginationObserver();
           adjustPaginationWidths();
         });
+
+        // Initial state
+        setActiveVideoTabIndex();
       });
 
       // Re-apply after any state change (Splide loves to rewrite tabindex)
@@ -199,19 +249,39 @@
       videoSlider.on('move', () => {
         syncVideosToActiveSlide();
         reassertPagination();
+        // Update active class/tabindex as soon as state changes
+        setActiveVideoTabIndex();
       });
 
-      videoSlider.on('moved', reassertPagination);
-      videoSlider.on('updated', reassertPagination);
-      videoSlider.on('refreshed', reassertPagination);
-      videoSlider.on('resize', reassertPagination);
+      videoSlider.on('moved', () => {
+        reassertPagination();
+        setActiveVideoTabIndex();
+        refocusToActiveVideoIfNeeded();
+      });
 
-      window.addEventListener('resize', reassertPagination);
+      videoSlider.on('updated', () => {
+        reassertPagination();
+        setActiveVideoTabIndex();
+      });
+
+      videoSlider.on('refreshed', () => {
+        reassertPagination();
+        setActiveVideoTabIndex();
+      });
+
+      videoSlider.on('resize', () => {
+        reassertPagination();
+        setActiveVideoTabIndex();
+      });
+
+      window.addEventListener('resize', () => {
+        reassertPagination();
+        setActiveVideoTabIndex();
+      });
 
       videoSlider.mount();
       contentSlider.mount();
       mobileSlider.mount();
-
     } catch (error) {
       console.error('Error initializing Splide:', error);
     }
@@ -240,6 +310,7 @@
     videos.forEach((video) => observer.observe(video));
   });
 </script>
+
 <style>
 .happy-hour_play-btn {
   position: absolute;
