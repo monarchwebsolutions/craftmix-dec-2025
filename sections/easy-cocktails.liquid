@@ -252,7 +252,7 @@
       // -----------------------------
       // Your transform correction (restored)
       // -----------------------------
-      const addTransformCorrection = () => {
+      {% comment %} const addTransformCorrection = () => {
         const track = document.querySelector('ul#videoCarousel-list');
         if (!track) return;
 
@@ -270,7 +270,7 @@
             }
           }
         });
-      };
+      }; {% endcomment %}
 
       // -----------------------------
       // Delegated event handlers (prevents Splide DOM rewrite bugs)
