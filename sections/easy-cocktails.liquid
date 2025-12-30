@@ -241,7 +241,9 @@
         document.querySelectorAll('.carousel-video').forEach((video) => {
           if (video.__toggleBound) return;
           video.__toggleBound = true;
+
           video.addEventListener('click', togglePlayPause);
+          video.addEventListener('keydown', handleVideoKeyToggle);
         });
 
         document.querySelectorAll('.happy-hour_play-btn').forEach((btn) => {
