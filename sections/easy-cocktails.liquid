@@ -41,7 +41,9 @@
         const pages = root.querySelectorAll('.splide__pagination__page');
         if (!pages.length) return;
 
-        pages.forEach((btn) => btn.setAttribute('tabindex', '0'));
+        pages.forEach((btn) => {
+          btn.setAttribute('tabindex', '0');
+        });
       }
 
       function bindPaginationObserver() {
@@ -55,11 +57,57 @@
         pagination.__a11yObserverBound = true;
 
         const mo = new MutationObserver(() => {
+          // Splide sometimes rewrites these after we set them.
+          // Run after DOM settles.
           requestAnimationFrame(forcePaginationTabbable);
         });
 
         mo.observe(pagination, { childList: true, subtree: true, attributes: true });
       }
+
+      // -----------------------------
+      // Video play/pause + mute logic
+      // -----------------------------
+      const togglePlayPause = (event) => {
+        const video =
+          event.currentTarget.tagName === 'VIDEO'
+            ? event.currentTarget
+            : event.currentTarget.closest('.video-container')?.querySelector('video');
+
+        const playBtn = video?.closest('.video-container')?.querySelector('.happy-hour_play-btn');
+        if (!video || !playBtn) return;
+
+        if (video.paused) {
+          video.muted = false;
+          video.play();
+          playBtn.style.display = 'none';
+        } else {
+          video.pause();
+          playBtn.style.display = 'block';
+        }
+      };
+
+      const toggleMute = (event) => {
+        const button = event.currentTarget;
+        const container = button.closest('.video-container');
+        if (!container) return;
+
+        const video = container.querySelector('video');
+        const icon = button.querySelector('img');
+        if (!video || !icon) return;
+
+        if (video.muted) {
+          video.muted = false;
+          icon.src =
+            'https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205';
+          icon.alt = 'Mute audio';
+        } else {
+          video.muted = true;
+          icon.src =
+            'https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205';
+          icon.alt = 'Unmute audio';
+        }
+      };
 
       // -----------------------------
       // Pagination width logic (scoped)
@@ -85,144 +133,23 @@
       };
 
       // -----------------------------
-      // Active-slide helpers (loop-safe)
+      // Keep videos in sync with active slide
       // -----------------------------
-      function getActiveSlideEl() {
-        const activeObj =
-          videoSlider?.Components?.Slides?.getAt && typeof videoSlider.Components.Slides.getAt === 'function'
-            ? videoSlider.Components.Slides.getAt(videoSlider.index)
-            : null;
-        return activeObj?.slide || null;
-      }
-
-      // -----------------------------
-      // Video play/pause + mute logic
-      // -----------------------------
-      const togglePlayPause = (event) => {
-        const container =
-          event.currentTarget?.closest?.('.video-container') ||
-          event.target?.closest?.('.video-container');
-
-        if (!container) return;
-
-        const video = container.querySelector('video');
-        const playBtn = container.querySelector('.happy-hour_play-btn');
-        if (!video || !playBtn) return;
-
-        if (video.paused) {
-          video.muted = false;
-          const p = video.play();
-          if (p && typeof p.catch === 'function') {
-            p.catch(() => {
-              // Fallback if unmuted play is blocked
-              video.muted = true;
-              try { video.play(); } catch (e) {}
-            });
-          }
-          playBtn.style.display = 'none';
-        } else {
-          video.pause();
-          playBtn.style.display = 'block';
-        }
-      };
-
-      const toggleMute = (event) => {
-        const container =
-          event.currentTarget?.closest?.('.video-container') ||
-          event.target?.closest?.('.video-container');
-
-        if (!container) return;
-
-        const video = container.querySelector('video');
-        const button = container.querySelector('.mute-button');
-        const icon = button ? button.querySelector('img') : null;
-        if (!video || !icon) return;
-
-        if (video.muted) {
-          video.muted = false;
-          icon.src =
-            'https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205';
-          icon.alt = 'Mute audio';
-        } else {
-          video.muted = true;
-          icon.src =
-            'https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205';
-          icon.alt = 'Unmute audio';
-        }
-      };
-
-      // -----------------------------
-      // Keyboard: Enter/Space toggles focused video
-      // -----------------------------
-      const handleVideoKeyToggle = (event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        const video = event.target;
-        if (!video || !video.classList || !video.classList.contains('carousel-video')) return;
-
-        event.preventDefault();
-        togglePlayPause(event);
-      };
-
-      // -----------------------------
-      // A11y: only the active video's tabindex=0
-      // -----------------------------
-      function setActiveVideoTabIndex() {
+      const syncVideosToActiveSlide = () => {
         const slides = videoSlider?.Components?.Elements?.slides || [];
-        if (!slides.length) return;
 
-        slides.forEach((slide) => {
-          const video = slide.querySelector('video.carousel-video');
-          if (!video) return;
-          video.classList.remove('is-active-video');
-          video.setAttribute('tabindex', '-1');
-        });
-
-        const activeSlideEl = getActiveSlideEl();
-        if (!activeSlideEl) return;
-
-        const activeVideo = activeSlideEl.querySelector('video.carousel-video');
-        if (!activeVideo) return;
-
-        activeVideo.classList.add('is-active-video');
-        activeVideo.setAttribute('tabindex', '0');
-      }
-
-      function refocusToActiveVideoIfNeeded() {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
-
-        const activeSlideEl = getActiveSlideEl();
-        const activeVideo = activeSlideEl?.querySelector?.('video.carousel-video');
-        if (!activeVideo) return;
-
-        const focused = document.activeElement;
-        if (!focused) return;
-
-        if (root.contains(focused)) {
-          const focusedVideo = focused.closest && focused.closest('video.carousel-video');
-          if (focusedVideo && focusedVideo !== activeVideo) {
-            activeVideo.focus();
-          }
-        }
-      }
-
-      // -----------------------------
-      // Autoplay on navigation only (NOT on initial mount)
-      // -----------------------------
-      let hasNavigated = false;
-
-      const stopAllVideosExcept = (activeSlideEl) => {
-        const slides = videoSlider?.Components?.Elements?.slides || [];
-        if (!slides.length) return;
-
-        slides.forEach((slide) => {
+        slides.forEach((slide, index) => {
           const video = slide.querySelector('video');
           const playBtn = slide.querySelector('.happy-hour_play-btn');
           if (!video) return;
 
-          const isActive = activeSlideEl && slide === activeSlideEl;
+          const isCurrent = index === videoSlider.index;
 
-          if (!isActive) {
+          if (isCurrent) {
+            video.play();
+            video.muted = false;
+            if (playBtn) playBtn.style.display = 'none';
+          } else {
             video.pause();
             try { video.currentTime = 0; } catch (e) {}
             if (playBtn) playBtn.style.display = 'block';
@@ -230,107 +157,38 @@
         });
       };
 
-      const autoplayActiveVideo = () => {
-        const activeSlideEl = getActiveSlideEl();
-        if (!activeSlideEl) return;
-
-        const activeVideo = activeSlideEl.querySelector('video');
-        const playBtn = activeSlideEl.querySelector('.happy-hour_play-btn');
-        if (!activeVideo) return;
-
-        activeVideo.muted = false;
-        const p = activeVideo.play();
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {
-            activeVideo.muted = true;
-            try { activeVideo.play(); } catch (e) {}
-          });
-        }
-        if (playBtn) playBtn.style.display = 'none';
-      };
-
-      // -----------------------------
-      // Your transform correction (restored)
-      // -----------------------------
-      const addTransformCorrection = () => {
-        const track = document.querySelector('ul#videoCarousel-list');
-        if (!track) return;
-
-        if (track.__transformCorrectionBound) return;
-        track.__transformCorrectionBound = true;
-
-        track.addEventListener('click', () => {
-          const currentTransform = window.getComputedStyle(track).transform;
-
-          if (currentTransform && currentTransform.includes('matrix')) {
-            const matrix = currentTransform.match(/matrix\(([^)]+)\)/);
-            if (matrix) {
-              const translateX = parseFloat(matrix[1].split(',')[4]);
-              track.style.transform = `translateX(${translateX - 1}px)`;
-            }
-          }
-        });
-      };
-
-      // -----------------------------
-      // Delegated event handlers (prevents Splide DOM rewrite bugs)
-      // -----------------------------
-      function bindDelegatedHandlersOnce() {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
-
-        if (root.__delegatedHandlersBound) return;
-        root.__delegatedHandlersBound = true;
-
-        root.addEventListener('click', (e) => {
-          // Play button click (including clicks on the inner img)
-          if (e.target.closest('.happy-hour_play-btn')) {
-            togglePlayPause(e);
-            return;
-          }
-
-          // Video click
-          if (e.target.closest('video.carousel-video')) {
-            togglePlayPause(e);
-            return;
-          }
-
-          // Mute click
-          if (e.target.closest('.mute-button')) {
-            toggleMute(e);
-            return;
-          }
-        });
-
-        // Enter/Space on focused video
-        root.addEventListener('keydown', handleVideoKeyToggle, true);
-      }
-
       // -----------------------------
       // Mount / lifecycle
       // -----------------------------
       videoSlider.on('mounted', () => {
-        // Pagination + sizing
+        // Bind click handlers once
+        document.querySelectorAll('.carousel-video').forEach((video) => {
+          if (video.__toggleBound) return;
+          video.__toggleBound = true;
+          video.addEventListener('click', togglePlayPause);
+        });
+
+        document.querySelectorAll('.happy-hour_play-btn').forEach((btn) => {
+          if (btn.__toggleBound) return;
+          btn.__toggleBound = true;
+          btn.addEventListener('click', togglePlayPause);
+        });
+
+        document.querySelectorAll('.mute-button').forEach((button) => {
+          if (button.__muteBound) return;
+          button.__muteBound = true;
+          button.addEventListener('click', toggleMute);
+        });
+
+        // Pagination: force tabindex=0 and keep it that way
         requestAnimationFrame(() => {
           forcePaginationTabbable();
           bindPaginationObserver();
           adjustPaginationWidths();
         });
-
-        // Bind delegated handlers (play/mute/video key toggles)
-        bindDelegatedHandlersOnce();
-
-        // Your transform correction
-        addTransformCorrection();
-
-        // Initial focus state only (no autoplay)
-        setActiveVideoTabIndex();
-
-        // Ensure other videos are stopped/btn visible on load
-        const activeSlideEl = getActiveSlideEl();
-        stopAllVideosExcept(activeSlideEl);
       });
 
+      // Re-apply after any state change (Splide loves to rewrite tabindex)
       const reassertPagination = () => {
         requestAnimationFrame(() => {
           forcePaginationTabbable();
@@ -338,53 +196,22 @@
         });
       };
 
-      // Mark navigation intent
       videoSlider.on('move', () => {
-        hasNavigated = true;
+        syncVideosToActiveSlide();
         reassertPagination();
       });
 
-      videoSlider.on('moved', () => {
-        reassertPagination();
-        setActiveVideoTabIndex();
+      videoSlider.on('moved', reassertPagination);
+      videoSlider.on('updated', reassertPagination);
+      videoSlider.on('refreshed', reassertPagination);
+      videoSlider.on('resize', reassertPagination);
 
-        const activeSlideEl = getActiveSlideEl();
-        stopAllVideosExcept(activeSlideEl);
-
-        // Autoplay ONLY after the user has navigated
-        if (hasNavigated) autoplayActiveVideo();
-
-        refocusToActiveVideoIfNeeded();
-
-        // Track element may get recreated; ensure correction stays attached
-        addTransformCorrection();
-      });
-
-      videoSlider.on('updated', () => {
-        reassertPagination();
-        setActiveVideoTabIndex();
-        addTransformCorrection();
-      });
-
-      videoSlider.on('refreshed', () => {
-        reassertPagination();
-        setActiveVideoTabIndex();
-        addTransformCorrection();
-      });
-
-      videoSlider.on('resize', () => {
-        reassertPagination();
-        setActiveVideoTabIndex();
-      });
-
-      window.addEventListener('resize', () => {
-        reassertPagination();
-        setActiveVideoTabIndex();
-      });
+      window.addEventListener('resize', reassertPagination);
 
       videoSlider.mount();
       contentSlider.mount();
       mobileSlider.mount();
+
     } catch (error) {
       console.error('Error initializing Splide:', error);
     }
@@ -413,7 +240,6 @@
     videos.forEach((video) => observer.observe(video));
   });
 </script>
-
 <style>
 .happy-hour_play-btn {
   position: absolute;
