@@ -131,36 +131,50 @@
       };
 
       // -----------------------------
-      // A11y: Active video class + tabindex management
+      // Helpers: get active slide (loop-safe)
+      // -----------------------------
+      function getActiveSlide() {
+        const slides = videoSlider?.Components?.Elements?.slides || [];
+        if (!slides.length) return null;
+
+        // Prefer non-clone active slide if possible, otherwise fall back to active clone.
+        return (
+          slides.find((s) => s.classList.contains('is-active') && !s.classList.contains('splide__slide--clone')) ||
+          slides.find((s) => s.classList.contains('is-active')) ||
+          null
+        );
+      }
+
+      // -----------------------------
+      // A11y: active video class + tabindex only on active video
       // -----------------------------
       function setActiveVideoTabIndex() {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
-
-        // Only target real slides (ignore clones created by loop mode)
-        const slides = root.querySelectorAll('.splide__slide:not(.splide__slide--clone)');
+        const slides = videoSlider?.Components?.Elements?.slides || [];
         if (!slides.length) return;
 
+        // Reset all videos (including clones) to not tabbable
         slides.forEach((slide) => {
           const video = slide.querySelector('video.carousel-video');
           if (!video) return;
-
-          if (slide.classList.contains('is-active')) {
-            video.classList.add('is-active-video');
-            video.setAttribute('tabindex', '0');
-          } else {
-            video.classList.remove('is-active-video');
-            video.setAttribute('tabindex', '-1');
-          }
+          video.classList.remove('is-active-video');
+          video.setAttribute('tabindex', '-1');
         });
+
+        const activeSlide = getActiveSlide();
+        if (!activeSlide) return;
+
+        const activeVideo = activeSlide.querySelector('video.carousel-video');
+        if (!activeVideo) return;
+
+        activeVideo.classList.add('is-active-video');
+        activeVideo.setAttribute('tabindex', '0');
       }
 
-      // If focus is on a now-inactive video, move it to the active one after slide change
       function refocusToActiveVideoIfNeeded() {
         const root = document.querySelector('#videoCarousel');
         if (!root) return;
 
-        const activeSlide = root.querySelector('.splide__slide.is-active:not(.splide__slide--clone)');
+        const activeSlide = getActiveSlide();
         if (!activeSlide) return;
 
         const activeVideo = activeSlide.querySelector('video.carousel-video');
@@ -169,7 +183,7 @@
         const focused = document.activeElement;
         if (!focused) return;
 
-        // If focus is inside the carousel but not on the active video, and it's currently on an inactive video, fix it
+        // If focus is currently on an inactive video inside the carousel, bump it to the active video
         if (root.contains(focused)) {
           const focusedVideo = focused.closest && focused.closest('video.carousel-video');
           if (focusedVideo && focusedVideo !== activeVideo) {
@@ -179,17 +193,20 @@
       }
 
       // -----------------------------
-      // Keep videos in sync with active slide (your existing behavior)
+      // Keep videos in sync with active slide (loop-safe)
       // -----------------------------
       const syncVideosToActiveSlide = () => {
         const slides = videoSlider?.Components?.Elements?.slides || [];
+        if (!slides.length) return;
 
-        slides.forEach((slide, index) => {
+        const activeSlide = getActiveSlide();
+
+        slides.forEach((slide) => {
           const video = slide.querySelector('video');
           const playBtn = slide.querySelector('.happy-hour_play-btn');
           if (!video) return;
 
-          const isCurrent = index === videoSlider.index;
+          const isCurrent = activeSlide && slide === activeSlide;
 
           if (isCurrent) {
             video.play();
@@ -236,6 +253,7 @@
 
         // Initial state
         setActiveVideoTabIndex();
+        syncVideosToActiveSlide();
       });
 
       // Re-apply after any state change (Splide loves to rewrite tabindex)
@@ -247,10 +265,10 @@
       };
 
       videoSlider.on('move', () => {
+        // Keep your original behaviors
         syncVideosToActiveSlide();
         reassertPagination();
-        // Update active class/tabindex as soon as state changes
-        setActiveVideoTabIndex();
+        // Do NOT set tabindex here (move fires mid-transition in loop mode)
       });
 
       videoSlider.on('moved', () => {
