@@ -59,7 +59,7 @@
 /* Homepage */
 
 .custom-video-review-carousel-video:focus-visible,
-.easy-cocktail-video{
+.easy-cocktail-video:focus-visible{
   outline-offset: -3px !important;
   border-radius: 29px !important;
 }
