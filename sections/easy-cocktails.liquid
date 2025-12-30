@@ -80,7 +80,6 @@
           const p = video.play();
           if (p && typeof p.catch === 'function') {
             p.catch(() => {
-              // If unmuted autoplay/play is blocked, fall back to muted play
               video.muted = true;
               try { video.play(); } catch (e) {}
             });
@@ -138,14 +137,22 @@
       };
 
       // -----------------------------
+      // Active-slide helpers (loop-safe)
+      // -----------------------------
+      function getActiveSlideEl() {
+        const activeObj = videoSlider?.Components?.Slides?.getAt
+          ? videoSlider.Components.Slides.getAt(videoSlider.index)
+          : null;
+        return activeObj?.slide || null;
+      }
+
+      // -----------------------------
       // A11y: only the active video's tabindex=0
-      // (loop-safe using Components.Slides.getAt(videoSlider.index))
       // -----------------------------
       function setActiveVideoTabIndex() {
         const slides = videoSlider?.Components?.Elements?.slides || [];
         if (!slides.length) return;
 
-        // Set all videos not tabbable
         slides.forEach((slide) => {
           const video = slide.querySelector('video.carousel-video');
           if (!video) return;
@@ -153,11 +160,7 @@
           video.setAttribute('tabindex', '-1');
         });
 
-        const activeObj = videoSlider?.Components?.Slides?.getAt
-          ? videoSlider.Components.Slides.getAt(videoSlider.index)
-          : null;
-
-        const activeSlideEl = activeObj?.slide || null;
+        const activeSlideEl = getActiveSlideEl();
         if (!activeSlideEl) return;
 
         const activeVideo = activeSlideEl.querySelector('video.carousel-video');
@@ -171,11 +174,7 @@
         const root = document.querySelector('#videoCarousel');
         if (!root) return;
 
-        const activeObj = videoSlider?.Components?.Slides?.getAt
-          ? videoSlider.Components.Slides.getAt(videoSlider.index)
-          : null;
-
-        const activeSlideEl = activeObj?.slide || null;
+        const activeSlideEl = getActiveSlideEl();
         const activeVideo = activeSlideEl?.querySelector?.('video.carousel-video');
         if (!activeVideo) return;
 
@@ -191,43 +190,47 @@
       }
 
       // -----------------------------
-      // Autoplay: keep videos in sync with the CURRENT index (loop-safe)
+      // Autoplay on navigation only (NOT on initial mount)
       // -----------------------------
-      const syncVideosToActiveSlide = () => {
+      let hasNavigated = false;
+
+      const stopAllVideosExcept = (activeSlideEl) => {
         const slides = videoSlider?.Components?.Elements?.slides || [];
         if (!slides.length) return;
-
-        const activeObj = videoSlider?.Components?.Slides?.getAt
-          ? videoSlider.Components.Slides.getAt(videoSlider.index)
-          : null;
-
-        const activeSlideEl = activeObj?.slide || null;
 
         slides.forEach((slide) => {
           const video = slide.querySelector('video');
           const playBtn = slide.querySelector('.happy-hour_play-btn');
           if (!video) return;
 
-          const isCurrent = activeSlideEl && slide === activeSlideEl;
+          const isActive = activeSlideEl && slide === activeSlideEl;
 
-          if (isCurrent) {
-            // Preserve your existing autoplay behavior
-            video.muted = false;
-            const p = video.play();
-            if (p && typeof p.catch === 'function') {
-              p.catch(() => {
-                // Fallback if unmuted play is blocked
-                video.muted = true;
-                try { video.play(); } catch (e) {}
-              });
-            }
-            if (playBtn) playBtn.style.display = 'none';
-          } else {
+          if (!isActive) {
             video.pause();
             try { video.currentTime = 0; } catch (e) {}
             if (playBtn) playBtn.style.display = 'block';
           }
         });
+      };
+
+      const autoplayActiveVideo = () => {
+        const activeSlideEl = getActiveSlideEl();
+        if (!activeSlideEl) return;
+
+        const activeVideo = activeSlideEl.querySelector('video');
+        const playBtn = activeSlideEl.querySelector('.happy-hour_play-btn');
+        if (!activeVideo) return;
+
+        activeVideo.muted = false;
+        const p = activeVideo.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {
+            // If unmuted play is blocked, fall back to muted
+            activeVideo.muted = true;
+            try { activeVideo.play(); } catch (e) {}
+          });
+        }
+        if (playBtn) playBtn.style.display = 'none';
       };
 
       // -----------------------------
@@ -260,12 +263,14 @@
           adjustPaginationWidths();
         });
 
-        // Initial state
+        // Initial focus state only (no autoplay)
         setActiveVideoTabIndex();
-        syncVideosToActiveSlide();
+
+        // Ensure ONLY the first video is tabbable and nothing auto-plays
+        const activeSlideEl = getActiveSlideEl();
+        stopAllVideosExcept(activeSlideEl);
       });
 
-      // Re-apply after any state change (Splide loves to rewrite tabindex)
       const reassertPagination = () => {
         requestAnimationFrame(() => {
           forcePaginationTabbable();
@@ -273,41 +278,44 @@
         });
       };
 
-      // Keep pagination responsive while moving
+      // Track explicit user navigation via arrows/pagination/drag/keyboard that causes a move
       videoSlider.on('move', () => {
+        hasNavigated = true;
         reassertPagination();
       });
 
-      // IMPORTANT: do autoplay + tabindex AFTER the slide actually changes
       videoSlider.on('moved', () => {
         reassertPagination();
         setActiveVideoTabIndex();
-        syncVideosToActiveSlide();
+
+        // Stop everything else always
+        const activeSlideEl = getActiveSlideEl();
+        stopAllVideosExcept(activeSlideEl);
+
+        // Autoplay only after the user has navigated at least once
+        if (hasNavigated) autoplayActiveVideo();
+
         refocusToActiveVideoIfNeeded();
       });
 
       videoSlider.on('updated', () => {
         reassertPagination();
         setActiveVideoTabIndex();
-        syncVideosToActiveSlide();
       });
 
       videoSlider.on('refreshed', () => {
         reassertPagination();
         setActiveVideoTabIndex();
-        syncVideosToActiveSlide();
       });
 
       videoSlider.on('resize', () => {
         reassertPagination();
         setActiveVideoTabIndex();
-        syncVideosToActiveSlide();
       });
 
       window.addEventListener('resize', () => {
         reassertPagination();
         setActiveVideoTabIndex();
-        syncVideosToActiveSlide();
       });
 
       videoSlider.mount();
