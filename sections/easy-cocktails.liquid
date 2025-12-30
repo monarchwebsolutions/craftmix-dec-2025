@@ -57,78 +57,12 @@
         pagination.__a11yObserverBound = true;
 
         const mo = new MutationObserver(() => {
+          // Splide sometimes rewrites these after we set them.
+          // Run after DOM settles.
           requestAnimationFrame(forcePaginationTabbable);
         });
 
         mo.observe(pagination, { childList: true, subtree: true, attributes: true });
-      }
-
-      // -----------------------------
-      // A11y: Only allow focus in the active slide (roving tabindex)
-      // -----------------------------
-      function updateTabbableInActiveSlide() {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
-
-        const slides = root.querySelectorAll('.splide__slide');
-        if (!slides.length) return;
-
-        const focusableSelector = [
-          'a[href]',
-          'button',
-          'input',
-          'select',
-          'textarea',
-          '[tabindex]',
-          'video.carousel-video',
-        ].join(',');
-
-        slides.forEach((slide) => {
-          // Ignore clones for tabindex management (loop mode creates clones)
-          if (slide.classList.contains('splide__slide--clone')) return;
-
-          const isActive = slide.classList.contains('is-active');
-          const focusables = slide.querySelectorAll(focusableSelector);
-
-          focusables.forEach((el) => {
-            if (el.disabled) return;
-
-            // Store original tabindex once so restoration is correct
-            if (el.dataset.origTabindex === undefined) {
-              el.dataset.origTabindex = el.hasAttribute('tabindex') ? el.getAttribute('tabindex') : '';
-            }
-
-            if (!isActive) {
-              el.setAttribute('tabindex', '-1');
-            } else {
-              const orig = el.dataset.origTabindex;
-              if (orig === '') el.removeAttribute('tabindex');
-              else el.setAttribute('tabindex', orig);
-            }
-          });
-        });
-      }
-
-      function keepFocusInsideActiveSlide() {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
-
-        const activeSlide = root.querySelector('.splide__slide.is-active:not(.splide__slide--clone)');
-        if (!activeSlide) return;
-
-        const focused = document.activeElement;
-        if (!focused || !root.contains(focused)) return;
-
-        const focusedSlide = focused.closest('.splide__slide');
-        if (!focusedSlide) return;
-
-        if (focusedSlide !== activeSlide) {
-          const target =
-            activeSlide.querySelector('video.carousel-video') ||
-            activeSlide.querySelector('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-
-          if (target) target.focus();
-        }
       }
 
       // -----------------------------
@@ -217,9 +151,7 @@
             if (playBtn) playBtn.style.display = 'none';
           } else {
             video.pause();
-            try {
-              video.currentTime = 0;
-            } catch (e) {}
+            try { video.currentTime = 0; } catch (e) {}
             if (playBtn) playBtn.style.display = 'block';
           }
         });
@@ -254,10 +186,6 @@
           bindPaginationObserver();
           adjustPaginationWidths();
         });
-
-        // Initial states
-        updateTabbableInActiveSlide();
-        syncVideosToActiveSlide();
       });
 
       // Re-apply after any state change (Splide loves to rewrite tabindex)
@@ -268,30 +196,22 @@
         });
       };
 
-      const reassertAll = () => {
-        reassertPagination();
-        updateTabbableInActiveSlide();
-      };
-
       videoSlider.on('move', () => {
         syncVideosToActiveSlide();
-        reassertAll();
+        reassertPagination();
       });
 
-      videoSlider.on('moved', () => {
-        reassertAll();
-        keepFocusInsideActiveSlide();
-      });
+      videoSlider.on('moved', reassertPagination);
+      videoSlider.on('updated', reassertPagination);
+      videoSlider.on('refreshed', reassertPagination);
+      videoSlider.on('resize', reassertPagination);
 
-      videoSlider.on('updated', reassertAll);
-      videoSlider.on('refreshed', reassertAll);
-      videoSlider.on('resize', reassertAll);
-
-      window.addEventListener('resize', reassertAll);
+      window.addEventListener('resize', reassertPagination);
 
       videoSlider.mount();
       contentSlider.mount();
       mobileSlider.mount();
+
     } catch (error) {
       console.error('Error initializing Splide:', error);
     }
@@ -320,7 +240,6 @@
     videos.forEach((video) => observer.observe(video));
   });
 </script>
-
 <style>
 .happy-hour_play-btn {
   position: absolute;
