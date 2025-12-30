@@ -77,7 +77,14 @@
 
         if (video.paused) {
           video.muted = false;
-          video.play();
+          const p = video.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {
+              // If unmuted autoplay/play is blocked, fall back to muted play
+              video.muted = true;
+              try { video.play(); } catch (e) {}
+            });
+          }
           playBtn.style.display = 'none';
         } else {
           video.pause();
@@ -131,28 +138,14 @@
       };
 
       // -----------------------------
-      // Helpers: get active slide (loop-safe)
-      // -----------------------------
-      function getActiveSlide() {
-        const slides = videoSlider?.Components?.Elements?.slides || [];
-        if (!slides.length) return null;
-
-        // Prefer non-clone active slide if possible, otherwise fall back to active clone.
-        return (
-          slides.find((s) => s.classList.contains('is-active') && !s.classList.contains('splide__slide--clone')) ||
-          slides.find((s) => s.classList.contains('is-active')) ||
-          null
-        );
-      }
-
-      // -----------------------------
-      // A11y: active video class + tabindex only on active video
+      // A11y: only the active video's tabindex=0
+      // (loop-safe using Components.Slides.getAt(videoSlider.index))
       // -----------------------------
       function setActiveVideoTabIndex() {
         const slides = videoSlider?.Components?.Elements?.slides || [];
         if (!slides.length) return;
 
-        // Reset all videos (including clones) to not tabbable
+        // Set all videos not tabbable
         slides.forEach((slide) => {
           const video = slide.querySelector('video.carousel-video');
           if (!video) return;
@@ -160,10 +153,14 @@
           video.setAttribute('tabindex', '-1');
         });
 
-        const activeSlide = getActiveSlide();
-        if (!activeSlide) return;
+        const activeObj = videoSlider?.Components?.Slides?.getAt
+          ? videoSlider.Components.Slides.getAt(videoSlider.index)
+          : null;
 
-        const activeVideo = activeSlide.querySelector('video.carousel-video');
+        const activeSlideEl = activeObj?.slide || null;
+        if (!activeSlideEl) return;
+
+        const activeVideo = activeSlideEl.querySelector('video.carousel-video');
         if (!activeVideo) return;
 
         activeVideo.classList.add('is-active-video');
@@ -174,16 +171,17 @@
         const root = document.querySelector('#videoCarousel');
         if (!root) return;
 
-        const activeSlide = getActiveSlide();
-        if (!activeSlide) return;
+        const activeObj = videoSlider?.Components?.Slides?.getAt
+          ? videoSlider.Components.Slides.getAt(videoSlider.index)
+          : null;
 
-        const activeVideo = activeSlide.querySelector('video.carousel-video');
+        const activeSlideEl = activeObj?.slide || null;
+        const activeVideo = activeSlideEl?.querySelector?.('video.carousel-video');
         if (!activeVideo) return;
 
         const focused = document.activeElement;
         if (!focused) return;
 
-        // If focus is currently on an inactive video inside the carousel, bump it to the active video
         if (root.contains(focused)) {
           const focusedVideo = focused.closest && focused.closest('video.carousel-video');
           if (focusedVideo && focusedVideo !== activeVideo) {
@@ -193,30 +191,40 @@
       }
 
       // -----------------------------
-      // Keep videos in sync with active slide (loop-safe)
+      // Autoplay: keep videos in sync with the CURRENT index (loop-safe)
       // -----------------------------
       const syncVideosToActiveSlide = () => {
         const slides = videoSlider?.Components?.Elements?.slides || [];
         if (!slides.length) return;
 
-        const activeSlide = getActiveSlide();
+        const activeObj = videoSlider?.Components?.Slides?.getAt
+          ? videoSlider.Components.Slides.getAt(videoSlider.index)
+          : null;
+
+        const activeSlideEl = activeObj?.slide || null;
 
         slides.forEach((slide) => {
           const video = slide.querySelector('video');
           const playBtn = slide.querySelector('.happy-hour_play-btn');
           if (!video) return;
 
-          const isCurrent = activeSlide && slide === activeSlide;
+          const isCurrent = activeSlideEl && slide === activeSlideEl;
 
           if (isCurrent) {
-            video.play();
+            // Preserve your existing autoplay behavior
             video.muted = false;
+            const p = video.play();
+            if (p && typeof p.catch === 'function') {
+              p.catch(() => {
+                // Fallback if unmuted play is blocked
+                video.muted = true;
+                try { video.play(); } catch (e) {}
+              });
+            }
             if (playBtn) playBtn.style.display = 'none';
           } else {
             video.pause();
-            try {
-              video.currentTime = 0;
-            } catch (e) {}
+            try { video.currentTime = 0; } catch (e) {}
             if (playBtn) playBtn.style.display = 'block';
           }
         });
@@ -245,6 +253,7 @@
           button.addEventListener('click', toggleMute);
         });
 
+        // Pagination: force tabindex=0 and keep it that way
         requestAnimationFrame(() => {
           forcePaginationTabbable();
           bindPaginationObserver();
@@ -264,37 +273,41 @@
         });
       };
 
+      // Keep pagination responsive while moving
       videoSlider.on('move', () => {
-        // Keep your original behaviors
-        syncVideosToActiveSlide();
         reassertPagination();
-        // Do NOT set tabindex here (move fires mid-transition in loop mode)
       });
 
+      // IMPORTANT: do autoplay + tabindex AFTER the slide actually changes
       videoSlider.on('moved', () => {
         reassertPagination();
         setActiveVideoTabIndex();
+        syncVideosToActiveSlide();
         refocusToActiveVideoIfNeeded();
       });
 
       videoSlider.on('updated', () => {
         reassertPagination();
         setActiveVideoTabIndex();
+        syncVideosToActiveSlide();
       });
 
       videoSlider.on('refreshed', () => {
         reassertPagination();
         setActiveVideoTabIndex();
+        syncVideosToActiveSlide();
       });
 
       videoSlider.on('resize', () => {
         reassertPagination();
         setActiveVideoTabIndex();
+        syncVideosToActiveSlide();
       });
 
       window.addEventListener('resize', () => {
         reassertPagination();
         setActiveVideoTabIndex();
+        syncVideosToActiveSlide();
       });
 
       videoSlider.mount();
