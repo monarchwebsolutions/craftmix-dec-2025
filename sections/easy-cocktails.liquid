@@ -129,6 +129,7 @@
 
       // -----------------------------
       // Video play/pause + mute logic
+      // - Respects user mute preference even while paused
       // -----------------------------
       const togglePlayPause = (event) => {
         const container =
@@ -142,14 +143,20 @@
         if (!video || !playBtn) return;
 
         if (video.paused) {
-          video.muted = false;
+          // Respect user mute preference (default = unmuted unless user explicitly muted)
+          const prefMuted = container.dataset.userMuted === 'true';
+          video.muted = prefMuted;
+
           const p = video.play();
           if (p && typeof p.catch === 'function') {
             p.catch(() => {
+              // If unmuted play is blocked, fall back to muted play and persist preference
               video.muted = true;
+              container.dataset.userMuted = 'true';
               try { video.play(); } catch (e) {}
             });
           }
+
           playBtn.style.display = 'none';
         } else {
           video.pause();
@@ -169,16 +176,18 @@
         const icon = button ? button.querySelector('img') : null;
         if (!video || !icon) return;
 
+        // Toggle mute state and persist preference
+        video.muted = !video.muted;
+        container.dataset.userMuted = video.muted ? 'true' : 'false';
+
         if (video.muted) {
-          video.muted = false;
-          icon.src =
-            'https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205';
-          icon.alt = 'Mute audio';
-        } else {
-          video.muted = true;
           icon.src =
             'https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205';
           icon.alt = 'Unmute audio';
+        } else {
+          icon.src =
+            'https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205';
+          icon.alt = 'Mute audio';
         }
       };
 
@@ -249,8 +258,9 @@
         if (!slides.length) return;
 
         slides.forEach((slide) => {
-          const video = slide.querySelector('video');
-          const playBtn = slide.querySelector('.happy-hour_play-btn');
+          const container = slide.querySelector('.video-container');
+          const video = container ? container.querySelector('video') : null;
+          const playBtn = container ? container.querySelector('.happy-hour_play-btn') : null;
           if (!video) return;
 
           const isActive = activeSlideEl && slide === activeSlideEl;
@@ -267,18 +277,25 @@
         const activeSlideEl = getActiveSlideEl();
         if (!activeSlideEl) return;
 
-        const activeVideo = activeSlideEl.querySelector('video');
-        const playBtn = activeSlideEl.querySelector('.happy-hour_play-btn');
-        if (!activeVideo) return;
+        const container = activeSlideEl.querySelector('.video-container');
+        const activeVideo = container ? container.querySelector('video') : null;
+        const playBtn = container ? container.querySelector('.happy-hour_play-btn') : null;
+        if (!activeVideo || !container) return;
 
-        activeVideo.muted = false;
+        // Respect user mute preference
+        const prefMuted = container.dataset.userMuted === 'true';
+        activeVideo.muted = prefMuted;
+
         const p = activeVideo.play();
         if (p && typeof p.catch === 'function') {
           p.catch(() => {
+            // If unmuted play is blocked, fall back to muted play and persist preference
             activeVideo.muted = true;
+            container.dataset.userMuted = 'true';
             try { activeVideo.play(); } catch (e) {}
           });
         }
+
         if (playBtn) playBtn.style.display = 'none';
       };
 
@@ -443,6 +460,7 @@
     videos.forEach((video) => observer.observe(video));
   });
 </script>
+
 
 
 <style>
