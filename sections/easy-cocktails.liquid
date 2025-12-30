@@ -277,6 +277,20 @@
                 {% if block.settings.video_url %}
                   <li class="splide__slide">
                     <div class="video-container">
+                      <video 
+                        class="carousel-video easy-cocktail-video" 
+                        muted 
+                        preload="none"
+                        tabindex="0"
+                        playsinline
+                        aria-label="Cocktail preparation video"
+                        {% if block.settings.video_thumbnail %}
+                          data-poster="{{ block.settings.video_thumbnail | image_url: width: 800 }}"
+                        {% endif %}
+                      >
+                        <source src="{{ block.settings.video_url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                      </video>
                       <!-- Play/Pause Button -->
                       <button class="happy-hour_play-btn" id="happy-hour_play-toggle">
                         <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/carousel-card-play-btn.svg?v=1738191527" width="68" height="68" alt="Play" class="happy-hour-play-icon" id="happy-hour-play-icon" loading="lazy">
@@ -312,20 +326,6 @@
                           </div>
                         </div>
                       {% endif %}
-                      <video 
-                        class="carousel-video easy-cocktail-video" 
-                        muted 
-                        preload="none"
-                        tabindex="0"
-                        playsinline
-                        aria-label="Cocktail preparation video"
-                        {% if block.settings.video_thumbnail %}
-                          data-poster="{{ block.settings.video_thumbnail | image_url: width: 800 }}"
-                        {% endif %}
-                      >
-                        <source src="{{ block.settings.video_url }}" type="video/mp4">
-                        Your browser does not support the video tag.
-                      </video>
 
                       <button class="mute-button" aria-label="Toggle Mute">
                         <img height="24" width="24" data-splide-lazy="https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205" alt="Mute Icon">
