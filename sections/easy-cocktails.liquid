@@ -16,7 +16,7 @@
         perPage: 1,
         pagination: false,
         arrows: false,
-        drag: false,
+        drag: false, // Prevent independent dragging
         lazyLoad: 'sequential',
       });
 
@@ -25,60 +25,25 @@
         perPage: 1,
         pagination: false,
         arrows: false,
-        drag: false,
+        drag: false, // Prevent independent dragging
       });
 
+      // Synchronize the second slider with the video slider
       videoSlider.sync(contentSlider);
       videoSlider.sync(mobileSlider);
 
-      // -----------------------------
-      // Pagination: make keyboard accessible (force tabindex=0)
-      // -----------------------------
-      function forcePaginationTabbable() {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
-
-        const pages = root.querySelectorAll('.splide__pagination__page');
-        if (!pages.length) return;
-
-        pages.forEach((btn) => {
-          btn.setAttribute('tabindex', '0');
-        });
-      }
-
-      function bindPaginationObserver() {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
-
-        const pagination = root.querySelector('.splide__pagination');
-        if (!pagination) return;
-
-        if (pagination.__a11yObserverBound) return;
-        pagination.__a11yObserverBound = true;
-
-        const mo = new MutationObserver(() => {
-          // Splide sometimes rewrites these after we set them.
-          // Run after DOM settles.
-          requestAnimationFrame(forcePaginationTabbable);
-        });
-
-        mo.observe(pagination, { childList: true, subtree: true, attributes: true });
-      }
-
-      // -----------------------------
-      // Video play/pause + mute logic
-      // -----------------------------
+      // // Function to toggle play/pause on video click
       const togglePlayPause = (event) => {
-        const video =
-          event.currentTarget.tagName === 'VIDEO'
-            ? event.currentTarget
-            : event.currentTarget.closest('.video-container')?.querySelector('video');
-
+        const video = event.currentTarget.tagName === 'VIDEO'
+          ? event.currentTarget
+          : event.currentTarget.closest('.video-container')?.querySelector('video');
+      
         const playBtn = video?.closest('.video-container')?.querySelector('.happy-hour_play-btn');
+      
         if (!video || !playBtn) return;
-
+      
         if (video.paused) {
-          video.muted = false;
+          video.muted = false; // ✅ Ensure it's unmuted before playing
           video.play();
           playBtn.style.display = 'none';
         } else {
@@ -86,132 +51,137 @@
           playBtn.style.display = 'block';
         }
       };
-
+      // Function to toggle mute/unmute on button click
       const toggleMute = (event) => {
         const button = event.currentTarget;
-        const container = button.closest('.video-container');
-        if (!container) return;
-
-        const video = container.querySelector('video');
+        const video = button.closest('.video-container').querySelector('video');
         const icon = button.querySelector('img');
-        if (!video || !icon) return;
 
         if (video.muted) {
           video.muted = false;
-          icon.src =
-            'https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205';
-          icon.alt = 'Mute audio';
+          icon.src = "https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205";
+          icon.alt = "Unmute Icon";
         } else {
           video.muted = true;
-          icon.src =
-            'https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205';
-          icon.alt = 'Unmute audio';
+          icon.src = "https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205";
+          icon.alt = "Mute Icon";
         }
       };
 
-      // -----------------------------
-      // Pagination width logic (scoped)
-      // -----------------------------
+      // Function to dynamically adjust the width of pagination bars
       const adjustPaginationWidths = () => {
-        const root = document.querySelector('#videoCarousel');
-        if (!root) return;
+        const pagination = document.querySelector('.splide__pagination');
+        const pages = document.querySelectorAll('.splide__pagination__page');
+        const videoContainer = document.querySelector('#videoCarousel .splide__track');
 
-        const pages = root.querySelectorAll('.splide__pagination__page');
-        const track = root.querySelector('.splide__track');
-        if (!pages.length || !track) return;
+        if (pagination && pages.length > 0 && videoContainer) {
+          const containerWidth = videoContainer.clientWidth;
+          const padding = 10; // Adjust this value for desired padding
+          const totalPadding = padding * (pages.length + 1); // Padding on both sides
+          const dynamicWidth = (containerWidth - totalPadding - 40) / pages.length;
 
-        const containerWidth = track.clientWidth;
-        const padding = 10;
-        const totalPadding = padding * (pages.length + 1);
-        const dynamicWidth = (containerWidth - totalPadding - 40) / pages.length;
-
-        pages.forEach((page) => {
-          page.style.width = `${dynamicWidth}px`;
-          page.style.marginLeft = `${padding / 2}px`;
-          page.style.marginRight = `${padding / 2}px`;
-        });
+          pages.forEach((page) => {
+            page.style.width = `${dynamicWidth}px`;
+            page.style.marginLeft = `${padding / 2}px`;
+            page.style.marginRight = `${padding / 2}px`;
+          });
+        }
       };
 
-      // -----------------------------
-      // Keep videos in sync with active slide
-      // -----------------------------
-      const syncVideosToActiveSlide = () => {
-        const slides = videoSlider?.Components?.Elements?.slides || [];
+      // Add functionality to decrease translateX by 1px on click
+      const addTransformCorrection = () => {
+        const track = document.querySelector('ul#videoCarousel-list'); // Ensure this selector matches your element
+        if (!track) return;
 
-        slides.forEach((slide, index) => {
-          const video = slide.querySelector('video');
-          const playBtn = slide.querySelector('.happy-hour_play-btn');
-          if (!video) return;
+        track.addEventListener('click', () => {
+          const currentTransform = window.getComputedStyle(track).transform;
 
-          const isCurrent = index === videoSlider.index;
-
-          if (isCurrent) {
-            video.play();
-            video.muted = false;
-            if (playBtn) playBtn.style.display = 'none';
-          } else {
-            video.pause();
-            try { video.currentTime = 0; } catch (e) {}
-            if (playBtn) playBtn.style.display = 'block';
+          if (currentTransform && currentTransform.includes('matrix')) {
+            const matrix = currentTransform.match(/matrix\(([^)]+)\)/);
+            if (matrix) {
+              const translateX = parseFloat(matrix[1].split(',')[4]); // Extract current translateX value
+              track.style.transform = `translateX(${translateX - 1}px)`; // Subtract 1px
+            }
           }
         });
       };
 
-      // -----------------------------
-      // Mount / lifecycle
-      // -----------------------------
       videoSlider.on('mounted', () => {
-        // Bind click handlers once
-        document.querySelectorAll('.carousel-video').forEach((video) => {
-          if (video.__toggleBound) return;
-          video.__toggleBound = true;
+        // Add click event listener to all videos for play/pause
+        const videos = document.querySelectorAll('.carousel-video');
+        videos.forEach((video) => {
           video.addEventListener('click', togglePlayPause);
         });
 
-        document.querySelectorAll('.happy-hour_play-btn').forEach((btn) => {
-          if (btn.__toggleBound) return;
-          btn.__toggleBound = true;
+        // Add click event listeners to all play buttons
+        const playButtons = document.querySelectorAll('.happy-hour_play-btn');
+        playButtons.forEach((btn) => {
           btn.addEventListener('click', togglePlayPause);
         });
 
-        document.querySelectorAll('.mute-button').forEach((button) => {
-          if (button.__muteBound) return;
-          button.__muteBound = true;
+        // Add click event listener to all mute buttons
+        const muteButtons = document.querySelectorAll('.mute-button');
+        muteButtons.forEach((button) => {
           button.addEventListener('click', toggleMute);
         });
 
-        // Pagination: force tabindex=0 and keep it that way
-        requestAnimationFrame(() => {
-          forcePaginationTabbable();
-          bindPaginationObserver();
-          adjustPaginationWidths();
-        });
-      });
+        // Adjust pagination widths after slider is mounted
+        adjustPaginationWidths();
 
-      // Re-apply after any state change (Splide loves to rewrite tabindex)
-      const reassertPagination = () => {
-        requestAnimationFrame(() => {
-          forcePaginationTabbable();
-          adjustPaginationWidths();
-        });
-      };
+        // Enable transform correction on the track
+        addTransformCorrection();
+
+        // Unmute the first video if it's playing (but don't auto-play)
+          const firstSlide = videoSlider.Components.Elements.slides[0];
+          const firstVideo = firstSlide?.querySelector('video');
+        
+          if (firstVideo && !firstVideo.paused) {
+            firstVideo.muted = false;
+          }
+      });
 
       videoSlider.on('move', () => {
-        syncVideosToActiveSlide();
-        reassertPagination();
+        const slides = videoSlider.Components.Elements.slides;
+      
+        slides.forEach((slide, index) => {
+          const video = slide.querySelector('video');
+          const playBtn = slide.querySelector('.happy-hour_play-btn');
+      
+          const isActive = slide.classList.contains('is-active');
+      
+          if (video) {
+            if (index === videoSlider.index) {
+              video.play();
+              video.muted = false;
+              if (playBtn) playBtn.style.display = 'none';
+            } else {
+              video.pause();
+              video.currentTime = 0;
+      
+              // Defer showing the button until transition completes
+              if (playBtn) {
+                // Hide immediately
+                playBtn.style.display = 'none';
+      
+                // Then show it only after Splide transition ends
+                setTimeout(() => {
+                  // Make sure this is no longer the active slide
+                  if (!slide.classList.contains('is-active')) {
+                    playBtn.style.display = 'block';
+                  }
+                }, 400); // Adjust this to match Splide transition speed
+              }
+            }
+          }
+        });
       });
 
-      videoSlider.on('moved', reassertPagination);
-      videoSlider.on('updated', reassertPagination);
-      videoSlider.on('refreshed', reassertPagination);
-      videoSlider.on('resize', reassertPagination);
-
-      window.addEventListener('resize', reassertPagination);
+      // Recalculate pagination widths on window resize
+      window.addEventListener('resize', adjustPaginationWidths);
 
       videoSlider.mount();
       contentSlider.mount();
       mobileSlider.mount();
-
     } catch (error) {
       console.error('Error initializing Splide:', error);
     }
@@ -220,26 +190,27 @@
   // Pause video when scrolled out of view
   document.addEventListener('DOMContentLoaded', () => {
     const videos = document.querySelectorAll('.easy-cocktail-video');
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const video = entry.target;
-
-          if (!entry.isIntersecting && !video.paused) {
-            video.pause();
-
-            const playBtn = video.closest('.video-container')?.querySelector('.happy-hour_play-btn');
-            if (playBtn) playBtn.style.display = 'block';
+  
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const video = entry.target;
+  
+        if (!entry.isIntersecting && !video.paused) {
+          video.pause();
+  
+          const playBtn = video.closest('.video-container')?.querySelector('.happy-hour_play-btn');
+          if (playBtn) {
+            playBtn.style.display = 'block';
           }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    videos.forEach((video) => observer.observe(video));
+        }
+      });
+    }, { threshold: 0.1 });
+  
+    videos.forEach(video => observer.observe(video));
   });
+
 </script>
+
 <style>
 .happy-hour_play-btn {
   position: absolute;
@@ -277,23 +248,6 @@
                 {% if block.settings.video_url %}
                   <li class="splide__slide">
                     <div class="video-container">
-                      <video 
-                        class="carousel-video easy-cocktail-video" 
-                        muted 
-                        preload="none"
-                        playsinline
-                        aria-label="Cocktail preparation video"
-                        {% if block.settings.video_thumbnail %}
-                          data-poster="{{ block.settings.video_thumbnail | image_url: width: 800 }}"
-                        {% endif %}
-                      >
-                        <source src="{{ block.settings.video_url }}" type="video/mp4">
-                        Your browser does not support the video tag.
-                      </video>
-                      <!-- Play/Pause Button -->
-                      <button class="happy-hour_play-btn">
-                        <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/carousel-card-play-btn.svg?v=1738191527" width="68" height="68" alt="Play" class="happy-hour-play-icon" loading="lazy">
-                      </button>
                       {% if block.settings.reviewer_photo or block.settings.reviewer_name %}
                         <div class="reviewer-info">
                           {% if block.settings.reviewer_photo %}
@@ -325,9 +279,27 @@
                           </div>
                         </div>
                       {% endif %}
+                      <video 
+                        class="carousel-video easy-cocktail-video" 
+                        muted 
+                        preload="none"
+                        playsinline
+                        aria-label="Cocktail preparation video"
+                        {% if block.settings.video_thumbnail %}
+                          data-poster="{{ block.settings.video_thumbnail | image_url: width: 800 }}"
+                        {% endif %}
+                      >
+                        <source src="{{ block.settings.video_url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                      </video>
 
+                       <!-- Play/Pause Button -->
+                      <div class="happy-hour_play-btn" id="happy-hour_play-toggle">
+                        <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/carousel-card-play-btn.svg?v=1738191527" width="68" height="68" alt="Play" class="happy-hour-play-icon" id="happy-hour-play-icon" loading="lazy">
+                      </div>
+                      
                       <button class="mute-button" aria-label="Toggle Mute">
-                        <img height="24" width="24" data-splide-lazy="https://cdn.shopify.com/s/files/1/2340/1623/files/Speaker_Icon_7d83b52f-cbca-4d55-ac43-c5293b0d97a4.png?v=1734273205" alt="Mute Icon">
+                        <img height="24" width="24" data-splide-lazy="https://cdn.shopify.com/s/files/1/2340/1623/files/Mute_Icon_77a389ee-8a3a-415f-9dd5-741c7c752fcb.png?v=1734273205" alt="Mute Icon">
                       </button>
                     </div>
                   </li>
