@@ -56,9 +56,10 @@
   box-shadow: inset 0 0 0 3px #e10600 !important;
 }
 
-/* Homepage - People Love It */
+/* Homepage */
 
-.custom-video-review-carousel-video:focus-visible{
+.custom-video-review-carousel-video:focus-visible,
+.easy-cocktail-video{
   outline-offset: -3px;
   border-radius: 29px
 }
