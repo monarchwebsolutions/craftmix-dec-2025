@@ -2,13 +2,13 @@
 {{- 'flickity.pkgd.min.js' | asset_url | script_tag -}}
 <script src="{{ 'custom-carousel.js' | asset_url }}" defer='defer'></script>
 
-<div class="pdp-custom-carousel-container"> 
-  {% comment %} <div style="background-color: {{ section.settings.background_color }} !important;" class="custom-flavor-carousel-section">
+<div> 
+  <div style="background-color: {{ section.settings.background_color }} !important;" class="custom-flavor-carousel-section">
       <div class="section-wave-container lottie-player rotated-wave">
         {% if template == 'page.wholesale' %}
           {% assign wave_type = 'wave-divider-right-to-left-2400px-pale-blue.json' %}
         {% else %}
-          {% assign wave_type = 'wave-divider-left-to-right-2400px-purple.json' %}
+          {% assign wave_type = 'wave-divider-right-to-left-2400px-offwhite.json' %}
         {% endif %}
         <div
           class="lazy-lottie-container section-wave"
@@ -20,7 +20,7 @@
         >
         <!-- lottie-player will be injected here -->
       </div>
-    </div> {% endcomment %}
+    </div>
     
     <div class="custom-flavor-carousel-header">
       <h3 class="custom-flavor-carousel-heading">{{ section.settings.heading }}</h3>
@@ -39,21 +39,43 @@
        </div>   
     </div>
   </div>
+  
 </div> 
+ 
+        
+        
+        
+        
+
 
 {% style %}
-.pdp-custom-carousel-container{
-  background-color:var(--craftmix-sky-blue);
-  position:relative;
-  z-index:2;
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
+
+ul {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+}
+
 .custom-flavor-carousel-section {
   padding-bottom: 50px;
   position: relative;
 }
 
 .custom-flavor-carousel-container {
-  padding-bottom: 80px;
+  margin-bottom: 60px;
   position: relative;
   padding-top: 86px; /* Add padding to make room for the buttons */
 }
@@ -263,27 +285,6 @@
     line-height: 35px;
   }  
 }
-
-/* Marquee */
-
-/* .pdp-quote-section-marquee {
-  position: absolute;
-  bottom: -8% !important;
-  z-index: 1;
-}
-
-@media screen and (max-width: 800px) {
-  lottie-player.marquee {
-    top: unset;
-  }
-}
-
-@media screen and (max-width: 500px) {
-  .pdp-quote-section-container lottie-player.marquee {
-    right: -200px;
-  }
-} */
-
 
 {% endstyle %}
 <script>

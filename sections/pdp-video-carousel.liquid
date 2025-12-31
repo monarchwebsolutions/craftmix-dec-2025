@@ -21,34 +21,21 @@
       </div>
     </div>
   </div>
-  <div class="section-wave-container video-carousel-section-wave-container">
-      <div
-        class="lazy-lottie-container section-wave pdp-video-carousel-wave"
-        data-src="{{ 'beige-divider-left-to-right.json' | asset_url }}}"
-        data-background="transparent"
-        data-speed="1"
-        data-autoplay="true"
-        data-loop="true"
-      >
-      <!-- lottie-player will be injected here -->
-    </div>
-  </div>
 </div>
 
 
 {% style %}
-.video-carousel-section-wave-container{
-  top:0;
-}
-.pdp-video-carousel-wave{
-  background-color:{{ product.metafields.custom.color_2 }};
-}
+
+  
 .custom-sub-carousel-section {
   padding-top: 50px;
   padding-bottom: 50px;
 }
 .custom-sub-carousel-header{
   padding-top:1rem;
+}
+.custom-sub--carousel-container{
+  overflow:hidden;
 }
 
 .custom-sub-carousel-subheader {
@@ -286,100 +273,133 @@
 
 {% javascript %}
 document.addEventListener('DOMContentLoaded', () => {
-    const cards = document.querySelectorAll('.custom-review-carousel-card');
+  const cards = document.querySelectorAll('.custom-review-carousel-card');
 
-    // Pause all other videos when one plays
-    function pauseAllOtherVideos(currentVideo) {
-        const videos = document.querySelectorAll('.custom-video-review-carousel-video');
+  // Pause all other videos when one plays
+  function pauseAllOtherVideos(currentVideo) {
+    const videos = document.querySelectorAll('.custom-video-review-carousel-video');
 
-        videos.forEach(video => {
-            if (video !== currentVideo) {
-                video.pause();
-                const parentCard = video.closest('.custom-review-carousel-card');
-                const playBtn = parentCard.querySelector('.play-btn');
-                if (playBtn) {
-                    playBtn.style.display = 'block';
-                }
-            }
+    videos.forEach((video) => {
+      if (video !== currentVideo) {
+        video.pause();
+        const parentCard = video.closest('.custom-review-carousel-card');
+        const playBtn = parentCard ? parentCard.querySelector('.play-btn') : null;
+        if (playBtn) playBtn.style.display = 'block';
+      }
+    });
+  }
+
+  // Pause videos when they leave the viewport
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target;
+
+        if (!entry.isIntersecting) {
+          video.pause();
+          const parentCard = video.closest('.custom-review-carousel-card');
+          const playBtn = parentCard ? parentCard.querySelector('.play-btn') : null;
+          if (playBtn) playBtn.style.display = 'block';
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
+
+  // Apply behavior to each video card
+  cards.forEach((card) => {
+    const video = card.querySelector('.custom-video-review-carousel-video');
+    const playBtn = card.querySelector('.play-btn');
+    const volumeBtn = card.querySelector('.volume-btn');
+    const volumeIcon = volumeBtn ? volumeBtn.querySelector('.volume-icon') : null;
+    const muteIcon = volumeBtn ? volumeBtn.querySelector('.mute-icon') : null;
+
+    if (!video || !playBtn || !volumeBtn || !volumeIcon || !muteIcon) return;
+
+    // Persisted user preference: default to whatever the video starts as
+    card.dataset.userMuted = video.muted ? 'true' : 'false';
+
+    function syncVolumeIcons() {
+      if (video.muted) {
+        volumeIcon.style.display = 'none';
+        muteIcon.style.display = 'block';
+      } else {
+        volumeIcon.style.display = 'block';
+        muteIcon.style.display = 'none';
+      }
+    }
+
+    // Ensure icons match initial state
+    syncVolumeIcons();
+
+    function toggleVideoPlay() {
+      const isPlaying = !video.paused;
+
+      if (isPlaying) {
+        video.pause();
+        playBtn.style.display = 'block';
+        return;
+      }
+
+      pauseAllOtherVideos(video);
+
+      // Respect user preference when starting playback
+      const prefMuted = card.dataset.userMuted === 'true';
+      video.muted = prefMuted;
+
+      video
+        .play()
+        .then(() => {
+          playBtn.style.display = 'none';
+        })
+        .catch((err) => {
+          // If unmuted play is blocked, fall back to muted and persist preference
+          video.muted = true;
+          card.dataset.userMuted = 'true';
+          syncVolumeIcons();
+
+          try {
+            const p2 = video.play();
+            if (p2 && typeof p2.catch === 'function') p2.catch(() => {});
+          } catch (e) {}
+
+          console.error('Video play failed:', err);
         });
     }
 
-    // Pause videos when they leave the viewport
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            const video = entry.target;
-
-            if (!entry.isIntersecting) {
-                video.pause();
-                const parentCard = video.closest('.custom-review-carousel-card');
-                const playBtn = parentCard.querySelector('.play-btn');
-                if (playBtn) {
-                    playBtn.style.display = 'block';
-                }
-            }
-        });
-    }, { threshold: 0.1 }); // Adjust threshold if needed
-
-    // Apply behavior to each video card
-    cards.forEach(card => {
-        const video = card.querySelector('.custom-video-review-carousel-video');
-        const playBtn = card.querySelector('.play-btn');
-        const volumeBtn = card.querySelector('.volume-btn');
-        const volumeIcon = volumeBtn.querySelector('.volume-icon');
-        const muteIcon = volumeBtn.querySelector('.mute-icon');
-
-        function toggleVideoPlay() {
-            const isPlaying = !video.paused;
-
-            if (isPlaying) {
-                video.pause();
-                playBtn.style.display = 'block';
-            } else {
-                pauseAllOtherVideos(video);
-                video.muted = false;
-                video.play().then(() => {
-                    playBtn.style.display = 'none';
-                }).catch(err => {
-                    console.error('Video play failed:', err);
-                });
-            }
-        }
-
-        video.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleVideoPlay();
-        });
-
-        playBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleVideoPlay();
-        });
-
-        video.addEventListener('ended', () => {
-          video.pause();
-          video.currentTime = 0;
-          video.load(); // This resets and shows the poster
-          playBtn.style.display = 'block';
-        });
-
-        volumeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (video.muted) {
-                video.muted = false;
-                volumeIcon.style.display = 'block';
-                muteIcon.style.display = 'none';
-            } else {
-                video.muted = true;
-                volumeIcon.style.display = 'none';
-                muteIcon.style.display = 'block';
-            }
-        });
-
-        // Start observing the video for scroll visibility
-        observer.observe(video);
+    video.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleVideoPlay();
     });
+
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleVideoPlay();
+    });
+
+    video.addEventListener('ended', () => {
+      video.pause();
+      video.currentTime = 0;
+      video.load(); // This resets and shows the poster
+      playBtn.style.display = 'block';
+    });
+
+    volumeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      // Toggle mute and persist preference, even if paused
+      video.muted = !video.muted;
+      card.dataset.userMuted = video.muted ? 'true' : 'false';
+
+      syncVolumeIcons();
+    });
+
+    // Start observing the video for scroll visibility
+    observer.observe(video);
+  });
 });
 {% endjavascript %}
+
 {% schema %}
 {
   "name": "PDP - What Our Fans Say",

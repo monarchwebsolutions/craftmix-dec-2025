@@ -103,10 +103,10 @@
         :class="{ 'text-left': $store.xHeaderMenu.mobileHeaderLayout.includes('right'), 'text-right': !$store.xHeaderMenu.mobileHeaderLayout.includes('right')}" 
         aria-label="{{ 'accessibility.close' | t }}"
       >
-        <span
-          class="cursor-pointer w-11 h-8 inline-block p-2"
+        <button
+          class="cursor-pointer inline-block p-2"
           @click="$store.xMobileNav.close()"
-        >{% render 'icon-alls', icon: 'icon-close' %}</span>
+        >{% render 'icon-alls', icon: 'icon-close' %}</button>
       </div>
       <div class="mobile-nav-content-wrapper">
         <div class="bestsellers-container-mobile">
@@ -252,6 +252,7 @@
 });
 
 </script>
+
 <style>
   #mobile-navigation{
     z-index:101;

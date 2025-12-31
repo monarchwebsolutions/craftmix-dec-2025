@@ -791,50 +791,54 @@ For inquiries or permissions, contact daniel@section.store
           {% assign product_collection = collections['new-website-products'] %}
           {% for product in product_collection.products %}
             {% unless product.tags contains "price_test" %}
-            <a href="{{ product.url }}" class="testimonials-slide-{{ section.id }} swiper-slide">
+            <div class="testimonials-slide-{{ section.id }} swiper-slide">
               <div class="scrolling-product-badge">12 pack</div>
+              <a href="{{ product.url }}" class="product-card-content-link">
+                {% unless block.settings.media_style == "none" %}
+                  <div class="testimonials-media-{{ section.id }}">
+                      <img width=240 height=240 alt="{{ product.featured_image.alt }}" class="lazy-img scrolling-product-image-mobile" data-src="{{ product.images.last | image_url: width: 300 }}">
+                  </div>
+                {% endunless %}
+                {% unless hide_content %}
+                  <div class="testimonials-content-{{ section.id }}">
+                    {% if block.settings.stars_count != 0 %}
+                      <div class="testimonials-stars-{{ section.id }}">
+                        {% if stars_icon != blank %}
+                          {% for item in (1..block.settings.stars_count) %}
+                            <!-- <img src="{{ stars_icon | image_url }}" alt="{{ stars_icon.alt }}" {% if lazy %}loading="lazy"{% endif %}> -->
+                          {% endfor %}
+                        {% else %}
+                          <!-- Your existing SVG star logic remains untouched -->
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                    {% if block.settings.text != blank %}
+                      <div class="testimonials-text-{{ section.id }}">
+                        {{ block.settings.text }}
+                      </div>
+                    {% endif %}
+                    {% if block.settings.author != blank %}
+                      <div class="testimonials-author-{{ section.id }}">{{ block.settings.author }}</div>
+                    {% endif %}
+            
+                    <h3 class="scrolling-product-title">{{ product.title }}</h3>
+                  </div>
+                {% endunless %}
+              </a>
               <form method="post" action="/cart/add">
                 <input type="hidden" name="id" value="{{ product.variants.first.id }}">
                 <button type="submit" class="scrolling-product-atc-btn" data-product-id="{{product.id }}">
                   Add - {{ product.price | money }}
                 </button>
               </form>
-              {% unless block.settings.media_style == "none" %}
-                <div class="testimonials-media-{{ section.id }}">
-                    <img class="lazy-img" width=240 height=240 alt="{{ product.featured_image.alt }}" class="scrolling-product-image-mobile" data-src="{{ product.images.last | image_url: width: 300 }}">
-                </div>
-              {% endunless %}
-              {% unless hide_content %}
-                <div class="testimonials-content-{{ section.id }}">
-                  {% if block.settings.stars_count != 0 %}
-                    <div class="testimonials-stars-{{ section.id }}">
-                      {% if stars_icon != blank %}
-                        {% for item in (1..block.settings.stars_count) %}
-                          <!-- <img src="{{ stars_icon | image_url }}" alt="{{ stars_icon.alt }}" {% if lazy %}loading="lazy"{% endif %}> -->
-                        {% endfor %}
-                      {% else %}
-                        <!-- Your existing SVG star logic remains untouched -->
-                      {% endif %}
-                    </div>
-                  {% endif %}
-                  {% if block.settings.text != blank %}
-                    <div class="testimonials-text-{{ section.id }}">
-                      {{ block.settings.text }}
-                    </div>
-                  {% endif %}
-                  {% if block.settings.author != blank %}
-                    <div class="testimonials-author-{{ section.id }}">{{ block.settings.author }}</div>
-                  {% endif %}
-          
-                  <h3 class="scrolling-product-title">{{ product.title }}</h3>
-                </div>
-              {% endunless %}
-            </a>
+            </div>
             {% endunless %}
           {% endfor %}
 
         </div>
-        <div class="testimonials-navigation-{{ section.id }}">
+        
+      </div>
+      <div class="testimonials-navigation-{{ section.id }}">
           <button class="testimonials-btn-prev-{{ section.id }}">
             {% if arrow_left != blank %}
               <!-- <img src="{{ arrow_left | image_url }}" alt="{{ arrow_left.alt }}"> -->
@@ -855,35 +859,40 @@ For inquiries or permissions, contact daniel@section.store
             {% endif %}
           </button>
         </div>
-      </div>
     </div>
 </div>
 
-
-
-
 <script>
   function initTestimonials12() {
-    document.querySelector('.testimonials-slider-{{ section.id }}').classList.remove('preview');
+    const sliderEl = document.querySelector('.testimonials-slider-{{ section.id }}');
+    if (!sliderEl) return;
+
+    sliderEl.classList.remove('preview');
+
     const slider = new Swiper(".testimonials-slider-{{ section.id }}", {
       speed: 300,
       spaceBetween: 20,
       loop: true,
       centeredSlides: true,
+
       {% if autoplay %}
       autoplay: {
         delay: {{ autoplay_delay }}000,
+        disableOnInteraction: false
       },
       {% endif %}
+
       navigation: {
         nextEl: '.testimonials-btn-next-{{ section.id }}',
         prevEl: '.testimonials-btn-prev-{{ section.id }}',
       },
+
       pagination: {
         el: '.testimonials-pagination-{{ section.id }}',
         type: 'bullets',
         clickable: true,
       },
+
       breakpoints: {
         320: {
           spaceBetween: {{ slider_gap_mobile }},
@@ -900,82 +909,135 @@ For inquiries or permissions, contact daniel@section.store
       }
     });
 
-    slider.on('slideChange', function () {
+    // Force Swiper to start on the first REAL slide (fixes "starts on 3rd-to-last" with loop + centeredSlides)
+    requestAnimationFrame(() => {
+      slider.slideToLoop(0, 0);
+      slider.update();
+    });
 
+    // Helper: return only REAL slides (not duplicates/clones)
+    function getRealSlides() {
+      return Array.from(slider.slides).filter(s => !s.classList.contains('swiper-slide-duplicate'));
+    }
+
+    // Disable tabbing on duplicate/cloned slides
+    function disableDuplicatesTabbing() {
+      const dupes = Array.from(slider.slides).filter(s => s.classList.contains('swiper-slide-duplicate'));
+      dupes.forEach(slide => {
+        slide.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]').forEach(el => {
+          el.setAttribute('tabindex', '-1');
+          el.setAttribute('aria-hidden', 'true');
+        });
+      });
+    }
+
+    // Keep pagination in sync when user tabs into a slide link or ATC button
+    function bindFocusSync() {
+      const realSlides = getRealSlides();
+
+      realSlides.forEach((slide) => {
+        const slideIndex = parseInt(slide.getAttribute('data-swiper-slide-index'), 10);
+        if (Number.isNaN(slideIndex)) return;
+
+        // Link + ATC button (and anything else focusable inside)
+        const focusables = slide.querySelectorAll('a[href], button:not([disabled])');
+
+        focusables.forEach(el => {
+          el.addEventListener('focus', () => {
+            // If focus lands in a real slide, ensure swiper "active" updates accordingly
+            slider.slideToLoop(slideIndex, 0);
+
+            // Ensure the focused element is actually visible (centeredSlides can drift)
+            requestAnimationFrame(() => {
+              slider.update();
+            });
+          });
+        });
+      });
+    }
+
+    slider.on('init', () => {
+      disableDuplicatesTabbing();
+      bindFocusSync();
+    });
+
+    // Swiper v11 sometimes doesn’t fire 'init' the same way depending on build,
+    // so run our setup immediately as well.
+    disableDuplicatesTabbing();
+    bindFocusSync();
+
+    // Your existing slideChange logic (fixed selector usage)
+    slider.on('slideChange', function () {
       const allSlides = slider.slides;
 
       allSlides.forEach(function(slide) {
-        if(!slide.classList.contains('.swiper-slide-active')) {
+        // NOTE: classList.contains expects class name without '.'
+        if (!slide.classList.contains('swiper-slide-active')) {
           let video = slide.querySelector('video');
           let frame = slide.querySelector('iframe');
           let btn = slide.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
-          if(video) {
-            video.pause();
-          }
-          if(frame) {
+
+          if (video) video.pause();
+
+          if (frame) {
+            // remove autoplay=1 if present
             frame.src = frame.src.replace('&autoplay=1', '');
           }
-          if(btn) {
-            btn.classList.remove('active');
-          }
+
+          if (btn) btn.classList.remove('active');
         }
       });
     });
 
-    let slides = document.querySelectorAll('.testimonials-slide-{{ section.id }}');
-    if(slides) {
+    // Your existing video click handlers (scoped to this section)
+    let slides = sliderEl.querySelectorAll('.testimonials-slide-{{ section.id }}');
+    if (slides && slides.length) {
       slides.forEach(el => {
         let btn = el.querySelector('.testimonials-video-btn-wrapper-{{ section.id }}');
         let videoWrapper = el.querySelector('.testimonials-video-poster-{{ section.id }}');
         let video = el.querySelector('video');
         let frame = el.querySelector('iframe');
 
-        if(btn) {
+        if (btn) {
           btn.addEventListener('click', () => {
             btn.classList.add('active');
-            if(videoWrapper) {
-              videoWrapper.classList.add('active'); 
-            }
-            if(video) {
-             video.play();
-            }
-            if(frame) {
-              frame.src += "&autoplay=1";
-            }
-          })
+            if (videoWrapper) videoWrapper.classList.add('active');
+            if (video) video.play();
+            if (frame && !frame.src.includes('autoplay=1')) frame.src += "&autoplay=1";
+          });
         }
 
-        if(videoWrapper) {
+        if (videoWrapper) {
           videoWrapper.addEventListener('click', () => {
-            if(video) {
-             video.pause();
-            }
-            if(frame) {
+            if (video) video.pause();
+            if (frame) {
               frame.src = frame.src.replace(/&autoplay=0/g, '');
               frame.src = frame.src.replace(/&autoplay=1/g, '');
             }
-            if(btn) {
-              btn.classList.remove('active');
-            }
-          })
+            if (btn) btn.classList.remove('active');
+          });
         }
-      })
+      });
     }
 
+    // LazyLoad (leave as-is)
     var lazyLoadInstance = new LazyLoad();
 
-    window.addEventListener("LazyLoad::Initialized",function (event) {
+    window.addEventListener("LazyLoad::Initialized", function (event) {
       window.lazyLoadInstance = event.detail.instance;
-    },false );
+    }, false);
   }
 
   document.addEventListener('DOMContentLoaded', initTestimonials12);
-  
+
   if (Shopify.designMode) {
-     document.addEventListener('shopify:section:unload', initTestimonials12);
-     document.addEventListener('shopify:section:load', initTestimonials12);
+    document.addEventListener('shopify:section:unload', initTestimonials12);
+    document.addEventListener('shopify:section:load', initTestimonials12);
   }
 </script>
+
+
+
 
 {% schema %}
   {

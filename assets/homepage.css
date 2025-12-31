@@ -150,9 +150,9 @@
 }
 
 .mute-button {
+  bottom: 5.375rem; /* 86px */
+  right: 0.5rem; /* 8px */
   position: absolute;
-  bottom: 0.625rem; /* 10px */
-  right: 0.625rem; /* 10px */
   background: none;
   border: none;
   padding: 0;
@@ -205,9 +205,7 @@
 }
 
 #ec-video-slider .mute-button img {
-  bottom: 5.375rem; /* 86px */
-  right: 0.5rem; /* 8px */
-  position: relative;
+  
 }
 
 #ec-video-slider .splide__arrow {
@@ -1186,6 +1184,16 @@
   object-fit: cover;
 }
 
+.custom-video-review-carousel-nav{
+  position:relative;
+}
+
+@media screen and (max-width:768px){
+  .custom-video-review-carousel-nav{
+    bottom:-364px;
+  }
+}
+
 .play-btn {
   position: absolute;
   top: 50%;
@@ -1475,6 +1483,7 @@
   margin-bottom: 60px;
   position: relative;
   padding-top: 86px; /* Add padding to make room for the buttons */
+  overflow: hidden;
 }
 
 .custom-video-review-carousel-cta-btn:hover {
@@ -1824,6 +1833,7 @@
   margin-bottom: 60px;
   position: relative;
   padding-top: 86px; /* Add padding to make room for Flickity the buttons */
+  overflow: hidden;
 }
 
 .custom-blog-carousel-subheading {
@@ -1922,12 +1932,14 @@
 @media (max-width: 768px) {
   .custom-blog-carousel-subheading {
     margin-bottom: 14px;
- }
+  }  
 
   .custom-blog-carousel-heading {
     font-size: 40px;
     letter-spacing: -1.05px; 
     line-height: 40px;
   }  
-
+  .custom-blog-carousel-section .custom-video-review-carousel-nav {
+      bottom: -280px;
+  }
 }

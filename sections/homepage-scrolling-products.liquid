@@ -330,6 +330,9 @@ For inquiries or permissions, contact daniel@section.store
     -ms-flex-align: center;
     align-items: center;
   }
+  .marquee-horizontal-{{ section.id }}:focus-within .track-horizontal-{{ section.id }} {
+    animation-play-state: paused;
+  }
 
   .track-horizontal-{{section.id}} {
       padding-left: {{ scrolling_gap_mobile }}px;
@@ -529,16 +532,23 @@ For inquiries or permissions, contact daniel@section.store
     }
   </style>
 {% endif %}
-
-<div class="hp-scrolling-products-container section-{{ section.id }} products-{{ section.id }}" style="background-color:{{ background_color }}; background-image: {{ background_gradient }};">
+{% assign count = 0 %}
+{% if collection != blank %}
+  {% for product in collections[collection].products %}
+    {% unless product.tags contains "price_test" %}
+      {% assign count = count | plus: 1 %}
+    {% endunless %}
+  {% endfor %}
+{% endif %}
+<div class="hp-scrolling-products-container section-{{ section.id }} products-{{ section.id }}" data-slide-window="{{ count }}" style="background-color:{{ background_color }}; background-image: {{ background_gradient }};">
     <div class="section-{{ section.id }}-settings">
       {% if heading != blank %}
         <div class="products-heading-{{ section.id }}">{{ heading }}</div>
       {% endif %}
       <h2 class="tiny-header">FIND YOUR FLAVOR</h2>
       <div class="marquee-horizontal-{{ section.id }}">
-        {% for item in (1..4) %}
-          <div class="track-horizontal-{{ section.id }}">
+        {% for item in (1..2) %}
+          <div class="track-horizontal-{{ section.id }}" {% if i == 2 %}aria-hidden="true" data-duplicate="true"{% endif %}>
             {% if collection != blank %}
               {% if collection_show_all %}
                 {% for product in collections[collection].products %}
@@ -597,7 +607,7 @@ For inquiries or permissions, contact daniel@section.store
                       <input type="hidden" name="id" value="{{ first_variant.id }}">
                       <button
                         type="submit"
-                        class="scrolling-product-atc-btn products-button-{{ section.id }}"
+                        class="scrolling-product-atc-btn products-button-{{ section.id }} swiper-slide-atc"
                         data-product-id="{{product.id }}"
                       >
                         {{ button }} - {{ product.price | money }}
@@ -677,6 +687,94 @@ For inquiries or permissions, contact daniel@section.store
       </div>
     </div>
 </div>
+<script>
+// Desktop-only: only elements that are currently visible in the marquee are tabbable.
+// Result: Tab will stop at the last visible product, then go to the next section (no off-screen focusing).
+(() => {
+  const DESKTOP_MQ = window.matchMedia('(min-width: 1024px)');
+  if (!DESKTOP_MQ.matches) return;
+
+  const SECTION = document.currentScript?.closest('.hp-scrolling-products-container') || document;
+  const VIEWPORT = SECTION.querySelector('.marquee-horizontal-{{ section.id }}');
+  if (!VIEWPORT) return;
+
+  // IMPORTANT: target only the actual interactive elements in your cards
+  // (your .swiper-slide class is on <a> in some variants; in others it's a wrapper).
+  const CARD_LINKS = '.swiper-slide[href], a.swiper-slide[href]';
+  const ATC_BTNS  = '.swiper-slide-atc, .scrolling-product-atc-btn';
+
+  const FOCUSABLE = [
+    CARD_LINKS,
+    ATC_BTNS,
+  ].join(',');
+
+  function cacheOrigTabIndex(el) {
+    if (!el.hasAttribute('data-orig-tabindex')) {
+      const orig = el.getAttribute('tabindex');
+      el.setAttribute('data-orig-tabindex', orig === null ? '' : orig);
+    }
+  }
+
+  function setTabIndex(el, tabbable) {
+    cacheOrigTabIndex(el);
+
+    if (tabbable) {
+      const orig = el.getAttribute('data-orig-tabindex');
+      if (orig === '') el.removeAttribute('tabindex');
+      else el.setAttribute('tabindex', orig);
+      el.removeAttribute('aria-hidden');
+    } else {
+      el.setAttribute('tabindex', '-1');
+      // optional but fine: keeps SR from wandering into invisible duplicates
+      el.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function setFocusableTabbable(el, tabbable) {
+    setTabIndex(el, tabbable);
+  }
+
+  // Observe the focusable elements themselves (not the wrapper),
+  // so we never accidentally leave an off-screen <a> tabbable.
+  const io = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        const tabbable = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        setFocusableTabbable(entry.target, tabbable);
+      });
+    },
+    {
+      root: VIEWPORT,
+      threshold: [0, 0.6, 1],
+      rootMargin: '0px'
+    }
+  );
+
+  function bindAll() {
+    SECTION.querySelectorAll(FOCUSABLE).forEach(el => {
+      if (el.__ioBound) return;
+      el.__ioBound = true;
+
+      // default to not tabbable until IO says it's visible
+      setFocusableTabbable(el, false);
+      io.observe(el);
+    });
+  }
+
+  bindAll();
+
+  // Handle any late DOM injection / duplication
+  const mo = new MutationObserver(() => bindAll());
+  mo.observe(SECTION, { childList: true, subtree: true });
+
+  // If the marquee animation causes IO jitter, this keeps things stable:
+  // rebinding isn't necessary, but forcing an initial IO evaluation helps.
+  requestAnimationFrame(() => bindAll());
+})();
+</script>
+
+
+
 
 {% schema %}
   {
