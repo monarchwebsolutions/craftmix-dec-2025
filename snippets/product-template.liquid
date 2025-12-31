@@ -181,6 +181,11 @@
               <img class="bg-img main-product-bg-img-1" height="auto" src="{{ product.metafields.custom.illustration_a | file_url }}" alt="{{ product.metafields.custom.illustration_a.value.alt | default: 'Background illustration'}}">
               <img class="bg-img main-product-bg-img-2" height="auto" src="{{ product.metafields.custom.illustration_b | file_url }}" alt="{{ product.metafields.custom.illustration_b.value.alt | default: 'Background illustration'}}">
               <div class="pdp-main-img-container">
+                {% if product.metafields.custom.badge_text %}
+                    <span class="bestseller-badge">{{ product.metafields.custom.badge_text }}</span>
+                    <!-- <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/stars-dark-blue.svg?v=1743061692" alt=""> -->
+                    <!-- <p class="num-reviews"> 13000 Reviews</p> -->
+                {% endif %}
                 <img id="main-product-image" fetchpriority="high" class="product-image" 
                      src="{{ product.featured_image | img_url: 'original' }}" 
                      alt="{{ product.featured_image.alt | escape }}">
@@ -239,20 +244,6 @@
               {%- endif -%}
             {%- endif -%}
 
-              {% comment %}
-            Custom starts & badge
-            {% endcomment %}
-            {% if product.metafields.custom.badge_text %}
-           <div class="pdp-info-section-header-items">
-              <span class="bestseller-badge">{{ product.metafields.custom.badge_text }}</span>
-              <!-- <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/stars-dark-blue.svg?v=1743061692" alt=""> -->
-              <!-- <p class="num-reviews"> 13000 Reviews</p> -->
-            </div>
-            {% endif %}
-            {% comment %}
-            End custom starts & badge
-            {% endcomment %}
-
              {% comment %}
              start - Add Filter to remove 2025 from product title
             {% endcomment %}
@@ -266,68 +257,27 @@
             {%- for block in section.blocks -%}
               {%- case block.type -%}
                 {% when "additional_content" %}
-                  {% comment %}
-                    Custom flavor finder
-                     {% endcomment %}
-                    
-                     
-                      <div class="pdp-info-flavor-section">
-                        <div class="change-flavor-container">
-                          <h5 class="change-flavor-heading">Change Flavor</h5>
-                         <div class="change-flavor-body">
-                           <div class="scroll-area">
-                            <ul class="change-flavor-list">
-                              {%- assign all_products = collections['new-website-products'].products -%}
-                            
-                              {%- for product_card in all_products -%}
-                                {%- if product.id == product_card.id -%}
-                                  <li>
-                                    <div class="flavor-card flavor-card-active"
-                                         data-product-id="{{ product_card.id }}"
-                                         data-product-image="{{ product_card.images.last | img_url: '600x600' }}"
-                                         data-url="{{ product_card.url }}">
-                                      <img class="flavor-card-image" src="{{ product_card.images.last | img_url: '300x300' }}" alt="{{ product_card.images.last.alt }}">
-                                      <h6 class="flavor-card-heading">{{ product_card.title | replace_first: "2025 - ", "" }}</h6>
-                                    </div>
-                                  </li>
-                                {%- endif -%}
-                              {%- endfor -%}
-                            
-                              {%- for product_card in all_products -%}
-                                {%- unless product.id == product_card.id -%}
-                                  <li>
-                                    <div class="flavor-card"
-                                         data-product-id="{{ product_card.id }}"
-                                         data-product-image="{{ product_card.images.last | img_url: '600x600' }}"
-                                         data-url="{{ product_card.url }}">
-                                      <img class="flavor-card-image" src="{{ product_card.images.last | img_url: '300x300' }}" alt="{{ product_card.images.last.alt }}">
-                                      <h6 class="flavor-card-heading">{{ product_card.title | replace_first: "2025 - ", "" }}</h6>
-                                    </div>
-                                  </li>
-                                {%- endunless -%}
-                              {%- endfor -%}
-                            </ul>
-                           </div>
-                          </div>
-                        </div>                        
-                      </div>
-
-                     {% comment %}
-                   End Custom flavor finder
-                     {% endcomment %}
-
                       {% comment %}
                     Custom Badges
                      {% endcomment %}
                         <div class="pdp-info-text-and-badges">
-                          <p class="info-text">{{ product.description }}</p>
                           <div class="product-badge-container">
                             <img height="auto" width="420" src="/cdn/shop/files/hero-badges-small-min_1024x.png" class="homepage-hero-badges" alt="Craftmix benefits: convenient, natural flavors, low sugar, affordable.">
                           </div>
-                          <div class="make-a-drink">
+                          <h2 class="product-description-heading">Product Description</h2>
+                          {% if product.metafields.custom.product_description_bullets.value != blank %}
+                            <ul class="product-description-bullets">
+                              {% for bullet in product.metafields.custom.product_description_bullets.value %}
+                                <li>{{ bullet }}</li>
+                              {% endfor %}
+                            </ul>
+                          {% else %}
+                            <p class="info-text">{{ product.description }}</p>
+                          {% endif %}
+                          {% comment %} <div class="make-a-drink">
                             <img src="https://cdn.shopify.com/s/files/1/2340/1623/files/timer-icon.png?v=1739046913" alt="Timer icon">
                             <p>Make a drink in under 1 minute! <br id="see-how-break" style="display:none;"><a href="#make-craft-drinks">See how</a></p>
-                          </div>
+                          </div> {% endcomment %}
                         </div>
                     {% comment %}
                    End Custom badges
@@ -487,52 +437,28 @@
                   </div>
                    {% comment %}
                   {% endcomment %}
-                  {% if product.metafields.custom.just_add != blank %}
-                    <p class="product-metafield-just_add-text">{{ product.metafields.custom.just_add }}<br>
-                      {% if product.title contains "Lemonade" %}
-                        Enjoy as a Lemonade or Cocktail
-                      {% else %}
-                        Or enjoy as a mocktail
-                      {% endif %}
-                    </p>
-                    {% if product.title == 'Variety Pack' %}
-                      <div class="variety-includes-container">
-                        <div class="includes-header">Includes:</div>
-                        <ul class="includes-list">
-                          <li class="includes-list-item">Strawberry Mule</li>
-                          <li class="includes-list-item">Passionfruit Paloma</li>
-                          <li class="includes-list-item">Blood Orange Mai Tai</li>
-                          <li class="includes-list-item">Mango Margarita</li>
-                        </ul>
-                      </div>
-                    {% elsif product.title == "Margarita Variety" %}
-                      <div class="variety-includes-container">
-                        <div class="includes-header">Includes:</div>
-                        <ul class="includes-list">
-                          <li class="includes-list-item">Classic Margarita</li>
-                          <li class="includes-list-item">Mango Margarita</li>
-                          <li class="includes-list-item">Skinny Margarita</li>
-                        </ul>
-                      </div>
-                    {% elsif product.title == "Holiday Variety" %}
-                      <div class="variety-includes-container">
-                        <div class="includes-header">Includes:</div>
-                        <ul class="includes-list">
-                          <li class="includes-list-item">Espresso Martini</li>
-                          <li class="includes-list-item">Spiked Apple Cider</li>
-                          <li class="includes-list-item">Cranberry Vanilla</li>
-                        </ul>
-                      </div>
-                    {% elsif product.title == "Lemonade Variety" %}
-                      <div class="variety-includes-container">
-                        <div class="includes-header">Includes:</div>
-                        <ul class="includes-list">
-                          <li class="includes-list-item">Classic Lemonade</li>
-                          <li class="includes-list-item">Pink Lemonade</li>
-                          <li class="includes-list-item">Blueberry Lemonade</li>
-                        </ul>
-                      </div>
-                    {% elsif product.title == "5PM Happy Hour Kit" %}
+                {%- when 'product_details' -%}
+                  <div class="from-lowest-price">
+                    From {{ product.price_min | money }}
+                  </div>
+                  <div 
+                    class="stamped-product-reviews-badge stamped-main-badge"
+                    data-id="{{ product.id }}"
+                    data-product-sku="{{ product.selected_or_first_available_variant.sku }}"
+                    data-product-title="{{ product.title | escape }}"
+                    data-product-type="{{ product.type }}"
+                    style="display: block;"
+                  >
+                  </div>
+                  <div class="product-brief">
+                    <p class="make-a-delicious">Make a delicious, flavorful {% if product.metafields.custom.variety_pack_products.value != blank %}cocktail{% else %}{{ product.title }}{% endif %} in 30 seconds</p>
+                    {% if product.metafields.custom.just_add != blank %}
+                      <p class="product-metafield-just_add-text">
+                        {{ product.metafields.custom.just_add }} Or enjoy as a mocktail.
+                      </p>
+                    {% endif %}
+                    <p class="each-packet">Each packet makes 1 drink.</p>
+                    {% if product.title == "5PM Happy Hour Kit" %}
                       <div class="variety-includes-container">
                         <div class="includes-header">Includes:</div>
                         <ul class="includes-list">
@@ -544,10 +470,61 @@
                           <li class="includes-list-item">3 custom Craftmix cups</li>
                         </ul>
                       </div>
+                    {% elsif product.metafields.custom.variety_pack_products.value != blank %}
+                      <div class="variety-includes-container">
+                        <div class="includes-header">Includes:</div>
+                        <ul class="includes-list">
+                        {% for product in product.metafields.custom.variety_pack_products.value %}
+                          <li class="includes-list-item">{{ product.title }}</li>
+                        {% endfor %}
+                        </ul>
+                      </div>
                     {% endif %}
-                 {% endif %}  
-                  {% comment %}
-                 {% endcomment %}
+                  </div>
+                {%- when 'product_selector' -%}
+                  <div class="pdp-info-flavor-section">
+                    <div class="change-flavor-container">
+                      <div class="step-heading">
+                        <span class="step-number">1</span>
+                        <h5 class="variant-selection-heading">Choose Flavor</h5>
+                      </div>
+                      <div class="change-flavor-body">
+                        <div class="scroll-area">
+                        <ul class="change-flavor-list">
+                          {%- assign all_products = collections['new-website-products'].products -%}
+                        
+                          {%- for product_card in all_products -%}
+                            {%- if product.id == product_card.id -%}
+                              <li>
+                                <div class="flavor-card flavor-card-active"
+                                      data-product-id="{{ product_card.id }}"
+                                      data-product-image="{{ product_card.images.last | img_url: '600x600' }}"
+                                      data-url="{{ product_card.url }}">
+                                  <img class="flavor-card-image" src="{{ product_card.images.last | img_url: '300x300' }}" alt="{{ product_card.images.last.alt }}">
+                                  <h6 class="flavor-card-heading">{{ product_card.title | replace_first: "2025 - ", "" }}</h6>
+                                </div>
+                              </li>
+                            {%- endif -%}
+                          {%- endfor -%}
+                        
+                          {%- for product_card in all_products -%}
+                            {%- unless product.id == product_card.id -%}
+                              <li>
+                                <div class="flavor-card"
+                                      data-product-id="{{ product_card.id }}"
+                                      data-product-image="{{ product_card.images.last | img_url: '600x600' }}"
+                                      data-url="{{ product_card.url }}">
+                                  <img class="flavor-card-image" src="{{ product_card.images.last | img_url: '300x300' }}" alt="{{ product_card.images.last.alt }}">
+                                  <h6 class="flavor-card-heading">{{ product_card.title | replace_first: "2025 - ", "" }}</h6>
+                                </div>
+                              </li>
+                            {%- endunless -%}
+                          {%- endfor -%}
+                        </ul>
+                        </div>
+                      </div>
+                    </div>                        
+                  </div>
                 {%- when 'price' -%}
                  
                 {%- when 'description' -%}
@@ -881,8 +858,15 @@
                               >
                                 {% if block.settings.show_variant_option %}
                                   <legend class="font-medium">
-                                    {% if template == 'product.2025-craftmix-product' %}Select Quantity{% else %}{{ option.name }}{% endif %}
-{% if block.settings.enable_color_swatches and settings.color_option_name contains option.name %}:
+                                    {% if template == 'product.2025-craftmix-product' %}
+                                      <div class="step-heading">
+                                        <span class="step-number">2</span>
+                                        <h5 class="variant-selection-heading">Choose Pack Size</h5>
+                                      </div>
+                                    {% else %}
+                                      {{ option.name }}
+                                    {% endif %}
+                                    {% if block.settings.enable_color_swatches and settings.color_option_name contains option.name %}:
                                       <span x-text=" options[{{ option_index }}]"></span>
                                     {% endif %}
                                   </legend> 
@@ -2417,7 +2401,7 @@
     <div class="section-wave-container">
       <div
         class="lazy-lottie-container section-wave"
-        data-src="{{ product.metafields.custom.main_product_wave | asset_url }}"
+        data-src="{{ 'wave-divider-left-to-right-2400px-light-blue.json' | asset_url }}"
         data-background="transparent"
         data-speed="1"
         data-autoplay="true"
@@ -2443,23 +2427,43 @@
     assign price_valid_until = 10 | times: 86400
   -%}
 <script>
-// Auto Select 36 Pack on page load
+(function () {
+  function select36PackWithoutScroll() {
+    // Find an input/option that represents "36 Pack"
+    const radios = document.querySelectorAll(
+      'fieldset.product-form__input input[type="radio"], .variant-selects input[type="radio"]'
+    );
 
-document.addEventListener('DOMContentLoaded', function () {
-  // Give the variant picker a moment to render (some themes mount late)
-  setTimeout(function () {
-    // Find all spans inside variant picker options
-    var spans = document.querySelectorAll('.product-form__input span, .variant-picker span, [data-option-value]');
-    
-    spans.forEach(function (span) {
-      var text = span.textContent.trim().toLowerCase();
-      if (text === '36 pack') {
-        span.click();
-      }
+    let input = null;
+
+    radios.forEach((r) => {
+      // Match either the value or the label text
+      const valueText = (r.value || '').trim().toLowerCase();
+      if (valueText === '36 pack') input = r;
     });
-  }, 100);
-});
+
+    if (!input) return;
+
+    const x = window.scrollX;
+    const y = window.scrollY;
+    const active = document.activeElement;
+
+    // Set checked + dispatch change (most themes listen to change)
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Restore scroll/focus
+    window.scrollTo(x, y);
+    requestAnimationFrame(() => window.scrollTo(x, y));
+    if (active && typeof active.focus === 'function') active.focus({ preventScroll: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(select36PackWithoutScroll, 250);
+  });
+})();
 </script>
+
   <script type="application/ld+json">
     {
       "@context": "http://schema.org/",

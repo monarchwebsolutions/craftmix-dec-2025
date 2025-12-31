@@ -202,9 +202,6 @@
   .custom-homepage-hero-stars {
     margin-top: 20px;
   }
-  .tool-tip-left{
-    display:none;
-  }
 
 }
 @media screen and (max-width: 550px) { /* 550px */
@@ -227,6 +224,9 @@
   }
   .hero-subheader{
     font-size:17px;
+  }
+  .tool-tip-left{
+    display:none;
   }
 }
 @media screen and (max-width: 399px) { /* 399px */

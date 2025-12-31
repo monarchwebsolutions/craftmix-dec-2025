@@ -3,14 +3,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Pause all other videos when one plays
   function pauseAllOtherVideos(currentVideo) {
-    const videos = document.querySelectorAll(".custom-video-review-carousel-video");
+    const videos = document.querySelectorAll(
+      ".custom-video-review-carousel-video"
+    );
 
     videos.forEach((video) => {
       if (video !== currentVideo) {
         video.pause();
         const parentCard = video.closest(".custom-review-carousel-card");
-        const playBtn = parentCard ? parentCard.querySelector(".play-btn") : null;
-        if (playBtn) playBtn.style.display = "block";
+        const playBtn = parentCard.querySelector(".play-btn");
+        if (playBtn) {
+          playBtn.style.display = "block";
+        }
       }
     });
   }
@@ -24,40 +28,23 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!entry.isIntersecting) {
           video.pause();
           const parentCard = video.closest(".custom-review-carousel-card");
-          const playBtn = parentCard ? parentCard.querySelector(".play-btn") : null;
-          if (playBtn) playBtn.style.display = "block";
+          const playBtn = parentCard.querySelector(".play-btn");
+          if (playBtn) {
+            playBtn.style.display = "block";
+          }
         }
       });
     },
     { threshold: 0.1 }
-  );
+  ); // Adjust threshold if needed
 
   // Apply behavior to each video card
   cards.forEach((card) => {
     const video = card.querySelector(".custom-video-review-carousel-video");
     const playBtn = card.querySelector(".play-btn");
     const volumeBtn = card.querySelector(".volume-btn");
-    const volumeIcon = volumeBtn ? volumeBtn.querySelector(".volume-icon") : null;
-    const muteIcon = volumeBtn ? volumeBtn.querySelector(".mute-icon") : null;
-
-    if (!video || !playBtn || !volumeBtn || !volumeIcon || !muteIcon) return;
-
-    // Persisted user preference: default to whatever the video starts as
-    // (Most likely muted by default)
-    card.dataset.userMuted = video.muted ? "true" : "false";
-
-    function syncVolumeIcons() {
-      if (video.muted) {
-        volumeIcon.style.display = "none";
-        muteIcon.style.display = "block";
-      } else {
-        volumeIcon.style.display = "block";
-        muteIcon.style.display = "none";
-      }
-    }
-
-    // Ensure icons match initial state
-    syncVolumeIcons();
+    const volumeIcon = volumeBtn.querySelector(".volume-icon");
+    const muteIcon = volumeBtn.querySelector(".mute-icon");
 
     function toggleVideoPlay() {
       const isPlaying = !video.paused;
@@ -65,48 +52,23 @@ document.addEventListener("DOMContentLoaded", () => {
       if (isPlaying) {
         video.pause();
         playBtn.style.display = "block";
-        return;
+      } else {
+        pauseAllOtherVideos(video);
+        video.muted = false;
+        video
+          .play()
+          .then(() => {
+            playBtn.style.display = "none";
+          })
+          .catch((err) => {
+            console.error("Video play failed:", err);
+          });
       }
-
-      pauseAllOtherVideos(video);
-
-      // Respect user preference when starting playback
-      const prefMuted = card.dataset.userMuted === "true";
-      video.muted = prefMuted;
-
-      video
-        .play()
-        .then(() => {
-          playBtn.style.display = "none";
-        })
-        .catch((err) => {
-          // If unmuted play is blocked, fall back to muted and persist preference
-          video.muted = true;
-          card.dataset.userMuted = "true";
-          syncVolumeIcons();
-
-          try {
-            const p2 = video.play();
-            if (p2 && typeof p2.catch === "function") {
-              p2.catch(() => {});
-            }
-          } catch (e) {}
-
-          console.error("Video play failed:", err);
-        });
     }
 
     video.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleVideoPlay();
-    });
-
-    video.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleVideoPlay();
-      }
     });
 
     playBtn.addEventListener("click", (e) => {
@@ -120,12 +82,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     volumeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-
-      // Toggle mute and persist preference, even if paused
-      video.muted = !video.muted;
-      card.dataset.userMuted = video.muted ? "true" : "false";
-
-      syncVolumeIcons();
+      if (video.muted) {
+        video.muted = false;
+        volumeIcon.style.display = "block";
+        muteIcon.style.display = "none";
+      } else {
+        video.muted = true;
+        volumeIcon.style.display = "none";
+        muteIcon.style.display = "block";
+      }
     });
 
     // Start observing the video for scroll visibility

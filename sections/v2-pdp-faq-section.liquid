@@ -51,7 +51,7 @@
   <div class="section-wave-container">
       <div
         class="lazy-lottie-container section-wave"
-        data-src="{{ 'wave-divider-right-to-left-2400px-offwhite.json' | asset_url }}"
+        data-src="{{ 'wave-divider-left-to-right-2400px-purple.json' | asset_url }}"
         data-background="transparent"
         data-speed="1"
         data-autoplay="true"
@@ -277,7 +277,7 @@ img {
 .faq-fruit.bg-pink-umbrella {
   position: absolute !important;
   z-index: 2;
-  top: 20px;
+  top: -32px;
   left: -60px;
   transform: rotate(359deg) scaleX(-1);
 } 
@@ -334,6 +334,7 @@ img {
   }
   .custom-product-faq-section{
     min-height:unset;
+    padding-top:0
   }
 }
 
@@ -363,11 +364,6 @@ img {
     padding: 20px 23px;
     margin-top: 62px;
     margin-bottom: 62px;
-  }
-}
-@media screen and (max-width: 900px) {
-  .custom-product-faq-section {
-    padding-top: 75px;
   }
 }
 

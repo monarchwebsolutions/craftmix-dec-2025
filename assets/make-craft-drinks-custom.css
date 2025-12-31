@@ -3,7 +3,7 @@
 }
 .make-craft-drinks-section {
   background-color: #fff9f4;
-  padding: 2rem 0 5.5rem;
+  padding: 80px 0;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -247,12 +247,13 @@
     margin-left: 20px;
   }
 }
-@media (max-width: 873px) {
+@media (max-width: 875px) {
   .make-craft-drinks-section {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
+    padding: 20px 0;
   }
   .craft-drinks-card-container,
   .craft-drinks-image-container {
@@ -339,9 +340,6 @@
 
   .craft-drinks-card-cta-btn {
     font-size: 20px;
-  }
-  .make-craft-drinks-pdp{
-    padding-top:5rem !important;
   }
   .pdp-quote-section-container .featured-image-banner{
     padding-bottom:75%;

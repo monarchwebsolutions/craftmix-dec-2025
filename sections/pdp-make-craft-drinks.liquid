@@ -44,8 +44,8 @@
   </div>
   <div class="section-wave-container">
       <div
-        class="lazy-lottie-container section-wave"
-        data-src="{{ 'wave-divider-left-to-right-2400px-purple.json' | asset_url }}"
+        class="lazy-lottie-container section-wave pdp-faq-wave"
+        data-src="{{ product.metafields.custom.secondary_product_wave | asset_url }}"
         data-background="transparent"
         data-speed="1"
         data-autoplay="true"
@@ -55,13 +55,6 @@
     </div>
   </div>
 </div>
-<style>
-  @media screen and (min-width:577px){
-    .make-craft-drinks-pdp{
-      padding-top:10rem !important;
-    }
-  }
-</style>
 {% schema %}
   {
     "name": "PDP - Make Craft Drinks",

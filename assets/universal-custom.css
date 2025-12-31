@@ -5,6 +5,7 @@
   padding: 0;
   box-sizing: border-box;
 }
+
 ul {
   list-style: none;
 }
@@ -188,6 +189,7 @@ h2 {
   position: relative;
   height: 12vw;
   flex-direction: column;
+  z-index:2;
 }
 .marquee-top,
 .marquee-bottom {
@@ -330,9 +332,6 @@ h2 {
 .tool-tip-right {
   padding: 0.25rem 0.625rem 0; /* 4px 10px 0 */
   font-size: 0.75rem; /* 12px */
-}
-.tool-tip-right .tool-tip-link{
-  display:block
 }
 
 .tool-tip-final-price{
@@ -531,6 +530,8 @@ div[data-rebuy-cart-anchor="header"] {
 }
 .rebuy-cart__flyout-item-media img {
   margin: auto !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 #rebuy-cart-title {
   text-transform: unset;
@@ -1065,4 +1066,3 @@ section.has-full-page-reviews {
     font-size: 16px;
   }
 }
-
