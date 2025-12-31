@@ -134,6 +134,7 @@ function waitForFlickityAndInit() {
       // ---- Make only visible items tabbable (fixes blog slider “tabs to first item”) ----
       function getFocusableIn(elm) {
         if (!elm) return [];
+
         const selector =
           'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -154,9 +155,14 @@ function waitForFlickityAndInit() {
           }
         } catch (e) {}
 
-        // Deduplicate
+        // IMPORTANT: include <video> elements even if they don't have tabindex yet.
+        // We'll manage their tabindex via the roving logic.
+        const videos = Array.from(elm.querySelectorAll('video'));
+        videos.forEach((v) => list.push(v));
+
         return Array.from(new Set(list));
       }
+
 
       function setTabbableState(target, isTabbable) {
         if (!target) return;
@@ -169,6 +175,14 @@ function waitForFlickityAndInit() {
 
         if (isTabbable) {
           const orig = target.dataset ? target.dataset.origTabindex : '__none__';
+
+          // SPECIAL CASE: videos need a tabindex to be keyboard reachable.
+          // If they didn't have one originally, restore them as tabindex="0".
+          if (target.tagName === 'VIDEO' && (orig === '__none__' || orig === null)) {
+            target.setAttribute('tabindex', '0');
+            return;
+          }
+
           if (orig === '__none__') {
             target.removeAttribute('tabindex');
           } else {
@@ -178,6 +192,7 @@ function waitForFlickityAndInit() {
           target.setAttribute('tabindex', '-1');
         }
       }
+
 
       function updateTabbablesToVisibleWindow() {
         const cellEls = flkty.getCellElements();
